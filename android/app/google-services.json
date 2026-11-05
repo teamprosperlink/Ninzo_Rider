@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "989018069150",
+    "project_id": "ninzo-rider",
+    "storage_bucket": "ninzo-rider.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:989018069150:android:d30237c8572ad88e63038f",
+        "android_client_info": {
+          "package_name": "com.prosperlink.ninzo_rider"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "989018069150-47m164vdcu1lf4gijng6ipf0no4aqju6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.prosperlink.ninzo_rider",
+            "certificate_hash": "2e73135250357507db11e4b2bbbfac472c4d6e06"
+          }
+        },
+        {
+          "client_id": "989018069150-hivfbdqhj22klgfdqebj2jolviigngnv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2Ce0E4h6roOJZMadF3wf99O9zMasC3aA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "989018069150-hivfbdqhj22klgfdqebj2jolviigngnv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "989018069150-petbmt0tcgn5gmh1g5vv03gd7n34rubu.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.prosperlink.ninzoRider"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

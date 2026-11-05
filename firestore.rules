@@ -1,0 +1,351 @@
+rules_version = '2';
+
+// users/{uid}    profile of every rider
+// riders/{uid}   rider registration (details, area, documents); only the
+//                backend / an admin reviews it and assigns hub and spot
+// riderPhones/{+91…}  directory read before sign-in (login, register)
+// areas/{id}     towns / junctions a rider can register for
+// orders/{id}    one food order; status moves ready → accepted → pickedUp → delivered
+//                 (offers, on hold); the Figma flow: assigned → onTheWay → atGate → delivered,
+//                 skipped by the rider, cancelled by the backend
+// orders/{id}/private/code  customer's 4-digit delivery code; riders can't read it
+//
+// Orders and their codes are created by the customer app or backend (Admin
+// SDK, which bypasses these rules). This app only moves orders forward.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // A verified phone account, or a new rider signed in anonymously by
+    // Register (no code); the number is then only what they typed.
+    function ownsPhone(phone) {
+      return phone == request.auth.token.phone_number
+        || (request.auth.token.firebase.sign_in_provider == 'anonymous'
+          && phone is string && phone.matches('[+]91[6-9][0-9]{9}'));
+    }
+
+    function onlyChanged(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    function isApprovedRider() {
+      return signedIn()
+        && get(/databases/$(database)/documents/riders/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid);
+      allow create: if isSelf(uid)
+        && ownsPhone(request.resource.data.phone)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0;
+      allow update: if isSelf(uid)
+        && onlyChanged(['name', 'email', 'updatedAt']);
+    }
+
+    match /riders/{uid} {
+      // Keys the rider may write; status, hub, spot, onHold and each
+      // document's review issue (set to a value) belong to the backend.
+      function riderKeys() {
+        return ['name', 'phone', 'area', 'status', 'documents', 'welcomed', 'submittedAt', 'createdAt', 'updatedAt'];
+      }
+
+      allow read: if isSelf(uid);
+      // Registering starts a draft.
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(riderKeys())
+        && request.resource.data.status == 'draft'
+        && request.resource.data.welcomed == false
+        && ownsPhone(request.resource.data.phone)
+        && !exists(/databases/$(database)/documents/riderPhones/$(request.resource.data.phone))
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0;
+      allow update: if isSelf(uid) && request.resource.data.phone == resource.data.phone && (
+        // Editing details and documents, reopening after a review, and
+        // submitting (which stamps the server time).
+        (resource.data.status in ['draft', 'needsRetake', 'failed', 'expired']
+          && onlyChanged(['name', 'area', 'documents', 'status', 'submittedAt', 'updatedAt'])
+          && (request.resource.data.status == 'draft'
+            || (request.resource.data.status == 'underReview'
+              && request.resource.data.submittedAt == request.time)))
+        // Seen "You're approved" and the spot.
+        || (resource.data.status == 'approved'
+          && onlyChanged(['welcomed', 'updatedAt'])
+          && request.resource.data.welcomed == true)
+      );
+    }
+
+    // Today's shift (riders/{uid}/shifts/{yyyy-MM-dd}): the backend creates
+    // it (times, hub, spot, scooter, stock load) and moves the hub's side of
+    // the stock request (packing, ready), and while the rider is online the
+    // quiet spell, stats, battery, sold portions and order queue. The rider
+    // replies to the request and moves their own phase forward.
+    // What the rider has been told (Profile 05). The backend writes these.
+    match /riders/{uid}/notifications/{notificationId} {
+      allow read: if isSelf(uid);
+    }
+
+    match /riders/{uid}/shifts/{shiftId} {
+      function shift() {
+        return resource.data;
+      }
+
+      function next() {
+        return request.resource.data;
+      }
+
+      function phases() {
+        return ['notStarted', 'checklist', 'headingToHub', 'atHub', 'scanning',
+                'stockLoaded', 'headingToSpot', 'online', 'ended'];
+      }
+
+      allow read: if isSelf(uid);
+      allow update: if isSelf(uid) && isApprovedRider() && (
+        // "I'm coming" / "Ask hub to prepare", or "Not today".
+        (shift().stockRequest in ['notRequested', 'awaitingReply', 'notWorkingToday']
+          && next().stockRequest in ['requested', 'notWorkingToday']
+          && next().repliedAt == request.time
+          && onlyChanged(['stockRequest', 'repliedAt', 'updatedAt']))
+        // Start riding, checklist, hub, scanning, Go online … (the hub must
+        // know the rider is coming).
+        || (next().phase in phases()
+          && shift().stockRequest in ['requested', 'packing', 'ready']
+          && onlyChanged(['phase', 'updatedAt']))
+        // The phone holding the shift (Shift 05, 54), before it's under way.
+        || (shift().phase in ['notStarted', 'checklist']
+          && next().openOn is string
+          && onlyChanged(['openOn', 'updatedAt']))
+        // End shift (Shift 48): the server stamps the moment.
+        || (shift().phase == 'online'
+          && next().endedAt == request.time
+          && onlyChanged(['endedAt', 'updatedAt']))
+        // First time online at the spot (Shift 24 → 25): the server stamps it.
+        || (shift().phase == 'headingToSpot'
+          && !('onlineAt' in shift())
+          && next().onlineAt == request.time
+          && onlyChanged(['onlineAt', 'updatedAt']))
+        // Add time (Shift 33): later, by up to 4 hours at a time.
+        || (shift().phase == 'online'
+          && next().end > shift().end
+          && next().end <= shift().end + duration.value(4, 'h')
+          && onlyChanged(['end', 'updatedAt']))
+        // Start order (Shift 28).
+        || (shift().phase == 'online'
+          && next().activeOrderId is string
+          && onlyChanged(['activeOrderId', 'updatedAt']))
+        // Back to your spot (Order 05, Navigate 04–06), back to waiting
+        // (Handover 06, 10). Start next order (Handover 11) sets the next id.
+        || (shift().phase == 'online'
+          && !('activeOrderId' in next())
+          && onlyChanged(['activeOrderId', 'updatedAt']))
+        // A break (Shift 43-45).
+        || (shift().phase == 'online' && onlyChanged(['break', 'updatedAt']))
+        // Answers to the nudge (Shift 36, 39) and the restock (Restock 01-05).
+        || (shift().phase == 'online' && onlyChanged(['nudge', 'updatedAt']))
+        || (shift().phase in ['online', 'headingToSpot'] && 'nudge' in shift()
+          && onlyChanged(['nudge', 'updatedAt']))
+        || (shift().phase == 'online' && onlyChanged(['restock', 'refillRequest', 'updatedAt']))
+        // Taking the nudge moves the rider's spot; the system picked it.
+        || (shift().phase == 'online' && 'nudge' in shift()
+          && next().spot.name == shift().nudge.spot.name
+          && onlyChanged(['spot', 'updatedAt']))
+        // A refill starts or ends (Shift 29, Refill 01-04).
+        || (shift().phase in ['online', 'atHub', 'stockLoaded']
+          && next().phase in ['online', 'atHub']
+          && next().refillRound is int
+          && onlyChanged(['refill', 'refillRound', 'phase', 'updatedAt']))
+        // A finished refill's portions join the scooter's.
+        || (shift().phase == 'stockLoaded' && 'refill' in shift()
+          && next().stock.diff(shift().stock).affectedKeys().hasOnly(['added'])
+          && onlyChanged(['stock', 'updatedAt']))
+        // Portions scanned onto the scooter.
+        || (next().stock.scanned is int
+          && next().stock.scanned >= 0
+          && next().stock.scanned <= shift().stock.portions
+          && next().stock.diff(shift().stock).affectedKeys().hasOnly(['scanned'])
+          && onlyChanged(['stock', 'updatedAt']))
+      );
+
+      // Portions confirmed on the scooter (Stock 01–16). Saved on the phone
+      // and uploaded when there's signal, so a retry may write one again.
+      match /scans/{code} {
+        allow read: if isSelf(uid);
+        allow create, update: if isSelf(uid) && isApprovedRider()
+          && request.resource.data.keys().hasOnly(['code', 'itemId', 'lotId', 'method', 'scannedAt', 'syncedAt'])
+          && request.resource.data.code is string
+          && request.resource.data.itemId is string
+          && request.resource.data.method in ['qr', 'manual']
+          && request.resource.data.scannedAt is timestamp
+          && request.resource.data.syncedAt == request.time;
+      }
+
+      // "Move to quarantine" (Stock 08); the backend handles the rest.
+      match /quarantine/{lotId} {
+        allow read: if isSelf(uid);
+        allow create, update: if isSelf(uid) && isApprovedRider()
+          && request.resource.data.keys().hasOnly(['lotId', 'itemId', 'requestedAt'])
+          && request.resource.data.lotId == lotId
+          && request.resource.data.itemId is string
+          && request.resource.data.requestedAt is timestamp;
+      }
+    }
+
+    // Read by number before sign-in (get only, never list). A new rider
+    // lists their own number once; the backend fills hubLabel /
+    // shiftStart and sets onHold.
+    match /riderPhones/{phone} {
+      allow get: if true;
+      allow create: if signedIn()
+        && ownsPhone(phone)
+        && get(/databases/$(database)/documents/riders/$(request.auth.uid)).data.phone == phone
+        && request.resource.data.keys().hasOnly(['uid', 'onHold', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.onHold == false;
+    }
+
+    // Register 14–16 search them before sign-in.
+    match /areas/{areaId} {
+      allow read: if true;
+    }
+
+    // Report a problem (Problem 01–03). Written by the rider; the backend
+    // answers on the order.
+    match /problemReports/{reportId} {
+      allow read: if signedIn() && resource.data.riderId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.riderId == request.auth.uid
+        // Without an order when sent from the Help centre (Profile 09).
+        && (!('orderId' in request.resource.data) || request.resource.data.orderId is string)
+        && request.resource.data.kind in ['breakdown', 'accident', 'gateClosed', 'customerAbsent', 'unsafeRoute']
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasOnly(['riderId', 'orderId', 'kind', 'createdAt']);
+    }
+
+    match /orders/{orderId} {
+      function order() {
+        return resource.data;
+      }
+
+      function next() {
+        return request.resource.data;
+      }
+
+      function isRider() {
+        return signedIn() && order().riderId == request.auth.uid;
+      }
+
+      function moves(fromStatuses, toStatus) {
+        return order().status in fromStatuses && next().status == toStatus;
+      }
+
+      function deliveryCode() {
+        return get(/databases/$(database)/documents/orders/$(orderId)/private/code).data.code;
+      }
+
+      // {qr, code}: the gate's QR code and code; riders can't read them.
+      function gateSecrets() {
+        return get(/databases/$(database)/documents/orders/$(orderId)/private/gate).data;
+      }
+
+      allow read: if isRider()
+        || (order().status == 'ready' && order().riderId == null && isApprovedRider());
+
+      allow update: if
+        // An approved rider accepts an open order.
+        (order().status == 'ready'
+          && order().riderId == null
+          && next().status == 'accepted'
+          && next().riderId == request.auth.uid
+          && next().acceptedAt == request.time
+          && isApprovedRider()
+          && onlyChanged(['status', 'riderId', 'rider', 'acceptedAt', 'updatedAt']))
+        // Pickup starts the 90-second timer; the server stamps the time.
+        || (isRider()
+          && moves(['accepted'], 'pickedUp')
+          && next().pickedUpAt == request.time
+          && onlyChanged(['status', 'pickedUpAt', 'updatedAt']))
+        // Handover needs the customer's code.
+        || (isRider()
+          && moves(['pickedUp'], 'delivered')
+          && next().deliveryCode == deliveryCode()
+          && next().deliveredAt == request.time
+          && onlyChanged(['status', 'deliveryCode', 'deliveredAt', 'updatedAt']))
+        // Figma order flow. "Navigate to Gate 3" (Order 01 → 02).
+        || (isRider()
+          && moves(['assigned'], 'onTheWay')
+          && next().navigatingAt == request.time
+          && onlyChanged(['status', 'navigatingAt', 'updatedAt']))
+        // "I've reached the gate" (Order 02 → Arrival 01).
+        || (isRider()
+          && order().status == 'onTheWay'
+          && next().reachedGateAt == request.time
+          && onlyChanged(['reachedGateAt', 'updatedAt']))
+        // The gate's QR code or code (Arrival 01 → 03).
+        || (isRider()
+          && moves(['onTheWay'], 'atGate')
+          && next().gateMethod in ['qr', 'code']
+          && next().gateProof == gateSecrets()[next().gateMethod]
+          && next().gateConfirmedAt == request.time
+          && onlyChanged(['status', 'gateMethod', 'gateProof', 'gateConfirmedAt', 'updatedAt']))
+        // Customer not at the gate (Handover 07): the backend tells them.
+        || (isRider()
+          && order().status == 'atGate'
+          && next().customerWaitingAt == request.time
+          && onlyChanged(['customerWaitingAt', 'updatedAt']))
+        // Handover. UPI: the customer's code, which riders can't read, or the
+        // order's details when the code doesn't work (no lockout, Handover 13;
+        // the backend reviews these). Cash: no code (Handover 12).
+        || (isRider()
+          && moves(['atGate'], 'delivered')
+          && next().deliveredAt == request.time
+          && next().handedOver is list
+          && ((next().handoverMethod == 'code'
+                && order().payment == 'upi'
+                && next().deliveryCode == deliveryCode())
+              || (next().handoverMethod == 'details' && order().payment == 'upi')
+              || (next().handoverMethod == 'cash' && order().payment == 'cash'))
+          && onlyChanged(['status', 'handoverMethod', 'deliveryCode', 'handedOver', 'deliveredAt', 'updatedAt']))
+        // A handover saved without signal (Handover 10): the code couldn't be
+        // checked at the gate, so the backend reviews it.
+        || (isRider()
+          && moves(['atGate'], 'delivered')
+          && next().deliveredAt == request.time
+          && next().handedOver is list
+          && next().handoverMethod == 'offline'
+          && next().handedOverAt is timestamp
+          && onlyChanged(['status', 'handoverMethod', 'offlineProof', 'handoverCode', 'handedOver', 'handedOverAt',
+              'deliveredAt', 'updatedAt']))
+        // Skip, only before setting off (Order 04 → 05).
+        || (isRider()
+          && moves(['assigned'], 'skipped')
+          && next().skipReason in ['scooterProblem', 'itemMissing', 'notSafe', 'somethingElse']
+          && next().skippedAt == request.time
+          && onlyChanged(['status', 'skipReason', 'skippedAt', 'updatedAt']))
+        // The rider shares their live location.
+        || (isRider()
+          && order().status in ['accepted', 'pickedUp', 'onTheWay']
+          && onlyChanged(['riderLocation', 'updatedAt']))
+        // The rider gives the order back before pickup.
+        || (isRider()
+          && moves(['accepted'], 'ready')
+          && next().riderId == null
+          && onlyChanged(['status', 'riderId', 'rider', 'riderLocation', 'acceptedAt', 'updatedAt']))
+        // The rider dismisses a delivered or cancelled order.
+        || (isRider()
+          && order().status in ['delivered', 'cancelled']
+          && next().riderClosed == true
+          && onlyChanged(['riderClosed', 'updatedAt']));
+
+      // Delivery codes: written by the backend, read by the customer app.
+      match /private/{docId} {
+        allow read, write: if false;
+      }
+    }
+  }
+}
