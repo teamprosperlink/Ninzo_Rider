@@ -27,6 +27,9 @@ abstract final class RiderApiEndpoints {
   static const events = '/riders/me/events';
   static const location = '/riders/me/location';
   static const stream = '/riders/me/stream';
+  static const notifications = '/riders/me/notifications';
+  static const shiftPlan = '/riders/me/shift-plan';
+  static const shiftPlanReply = '/riders/me/shift-plan/reply';
 
   // ── Shift and spots ──
   static const nodes = '/nodes';
@@ -37,6 +40,7 @@ abstract final class RiderApiEndpoints {
   // ── Stock ──
   static const stock = '/riders/me/stock';
   static const stockScan = '/riders/me/stock/scan';
+  static String quarantineLot(String lotId) => '/riders/me/stock/$lotId/quarantine';
 
   // ── Offers and orders ──
   static const offers = '/riders/me/offers';

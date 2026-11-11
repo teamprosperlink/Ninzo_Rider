@@ -87,6 +87,7 @@ class ApiAuthRepository implements AuthRepository {
     try {
       final json = await _api.registerDevice({'platform': push.platform, 'push_token': token});
       deviceId = json['device_id'] as String? ?? deviceId;
+      _api.deviceId = deviceId;
     } on RiderApiException {
       // Next sign-in or launch tries again.
     }
@@ -102,6 +103,7 @@ class ApiAuthRepository implements AuthRepository {
         // Signing out ends the session anyway; the server drops its devices.
       }
       deviceId = null;
+      _api.deviceId = null;
     }
     try {
       await _api.signOut();
@@ -144,19 +146,38 @@ class ApiUserRepository implements UserRepository {
 
   final RiderApi _api;
 
+  final _updates = StreamController<AppUser>.broadcast();
+
+  static AppUser _user(Map<String, dynamic> rider, String? phone) => AppUser(
+    uid: rider['id'] as String,
+    phone: phone ?? '',
+    name: rider['name'] as String? ?? '',
+    email: rider['email'] as String?,
+  );
+
   @override
   Stream<AppUser?> watchUser(String uid) async* {
     final saved = await _api.client.tokens.read();
     final json = await _api.getRider();
-    final rider = json['rider'] as Map<String, dynamic>;
-    yield AppUser(uid: rider['id'] as String, phone: saved?.phone ?? '', name: rider['name'] as String? ?? '');
+    yield _user(json['rider'] as Map<String, dynamic>, saved?.phone);
+    yield* _updates.stream;
   }
 
-  /// The rider API has no endpoint to create or edit a profile yet.
+  /// The account exists once operations have added the number; creating
+  /// one here gives it its name (`PATCH /riders/me`).
   @override
-  Future<void> createUser(AppUser user) async => throw const AuthFailure(AuthFailureKind.unknown, 'not_in_api');
+  Future<void> createUser(AppUser user) => _patch({'name': user.name, 'email': ?user.email});
 
   @override
-  Future<void> updateProfile(String uid, {required String name, String? email}) async =>
-      throw const AuthFailure(AuthFailureKind.unknown, 'not_in_api');
+  Future<void> updateProfile(String uid, {required String name, String? email}) => _patch({'name': name, 'email': email});
+
+  Future<void> _patch(Map<String, dynamic> changes) async {
+    try {
+      final json = await _api.updateRider(changes);
+      final saved = await _api.client.tokens.read();
+      _updates.add(_user(json['rider'] as Map<String, dynamic>, saved?.phone));
+    } on RiderApiException catch (e) {
+      throw AuthFailure(e.code == 'network' ? AuthFailureKind.noInternet : AuthFailureKind.unknown, e.code);
+    }
+  }
 }

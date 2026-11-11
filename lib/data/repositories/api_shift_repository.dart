@@ -10,34 +10,59 @@ import '../datasources/remote/rider_api_session.dart';
 
 /// The rider's day on the rider API.
 ///
-/// The API has no shift schedule, morning stock request or hub packing: the
-/// rider rides to their assigned node, the shift starts there
-/// (`POST /riders/me/shifts/start` takes the scooter waiting at the node) and
-/// they scan lots onto it. So the stock request always reads "ready", the trip
-/// to the "hub" is the trip to the node, and arriving there starts the shift
-/// and goes straight to scanning. The phase is kept on the phone; an open
-/// shift on the server moves it on to scanning at least.
+/// Today's plan (`GET /riders/me/shift-plan`) gives the shift's times, the
+/// morning stock request and the hub's packing. The rider rides to their
+/// node, the shift starts there (`POST /riders/me/shifts/start` takes the
+/// scooter waiting at the node) and they scan lots onto it once the stock is
+/// packed. The phase is kept on the phone; an open shift on the server with
+/// its stock ready moves it on to scanning at least.
+///
+/// A day operations planned nothing for has no request to answer and nothing
+/// to wait for, so it reads "ready".
 class ApiShiftRepository implements ShiftRepository {
   ApiShiftRepository(this._session);
 
   final RiderApiSession _session;
 
-  /// The API has no end time; the shift runs this long unless time is added.
-  static const defaultLength = Duration(hours: 8);
+  /// Only when there is no plan and no planned end: the shift runs this long
+  /// unless time is added.
+  static const unplannedLength = Duration(hours: 8);
 
   @override
   Stream<Shift?> watchToday(String uid) => _session.watch(_shift);
 
+  /// The plan's stock request and packing.
+  static StockRequestStatus stockRequestOf(Map<String, dynamic>? plan) {
+    if (plan == null) return StockRequestStatus.ready;
+    return switch ((plan['stock_reply'], plan['packing'])) {
+      ('not_today', _) => StockRequestStatus.notWorkingToday,
+      ('coming', 'ready') => StockRequestStatus.ready,
+      ('coming', 'packing') => StockRequestStatus.packing,
+      ('coming', _) => StockRequestStatus.requested,
+      _ => StockRequestStatus.awaitingReply,
+    };
+  }
+
   Shift? _shift() {
-    final node = _session.assignedNode;
+    final plan = _session.shiftPlan;
+    final node = _session.nodeById(plan?['node_id'] as String?) ?? _session.assignedNode;
     if (node == null) return null;
     final day = _session.day;
     final open = _session.openShift;
     final now = _session.clock();
     final started = RiderApiSession.parseTime(open?['started_at']);
     final refillHub = day['refillHub'] as String?;
+    final stockRequest = stockRequestOf(plan);
     var phase = ShiftPhase.values.asNameMap()[day['phase']] ?? ShiftPhase.notStarted;
-    if (open != null && refillHub == null && phase.isBefore(ShiftPhase.scanning)) phase = ShiftPhase.scanning;
+    if (open != null && refillHub == null && stockRequest == StockRequestStatus.ready && phase.isBefore(ShiftPhase.scanning)) {
+      phase = ShiftPhase.scanning;
+    }
+    final start = RiderApiSession.parseTime(plan?['starts_at']) ?? started ?? DateTime(now.year, now.month, now.day);
+    final end =
+        RiderApiSession.parseTime(open?['planned_end_at']) ??
+        RiderApiSession.parseTime(plan?['ends_at']) ??
+        (started ?? now).add(unplannedLength);
+    final hub = _session.hubNamed(refillHub);
     final spot = day['spot'] as Map<String, dynamic>?;
     final lots = _session.lots;
     // At the end the server takes the lots back; what was left is kept.
@@ -45,9 +70,11 @@ class ApiShiftRepository implements ShiftRepository {
         lots.fold<int>(0, (sum, lot) => sum + ((lot['qty'] as num?)?.toInt() ?? 0));
     return Shift(
       id: _session.indiaDate,
-      start: started ?? DateTime(now.year, now.month, now.day),
-      end: (started ?? now).add(defaultLength),
-      hub: _refillHub(refillHub) ?? Hub(id: node.id, name: node.name, area: '', point: node.point),
+      start: start,
+      end: end,
+      hub:
+          _refillHub(refillHub) ??
+          Hub(id: node.id, name: node.name, area: '', point: node.point, managerPhone: hub?['manager_phone'] as String?),
       spot: spot == null
           ? Spot(name: node.name, point: node.point)
           : Spot(
@@ -56,7 +83,8 @@ class ApiShiftRepository implements ShiftRepository {
             ),
       scooter: _scooter(open),
       hubDistanceKm: node.hubDistanceM == null ? null : node.hubDistanceM! / 1000,
-      stockRequest: StockRequestStatus.ready,
+      stockRequest: stockRequest,
+      stockReadyAt: RiderApiSession.parseTime(plan?['ready_at']),
       phase: phase,
       stock: StockLoad(
         items: {for (final lot in lots) lot['item_id']}.length,
@@ -85,6 +113,7 @@ class ApiShiftRepository implements ShiftRepository {
       name: name,
       area: '',
       point: LatLng((hub['lat'] as num).toDouble(), (hub['lng'] as num).toDouble()),
+      managerPhone: _session.hubNamed(name)?['manager_phone'] as String?,
     );
   }
 
@@ -97,9 +126,17 @@ class ApiShiftRepository implements ShiftRepository {
     );
   }
 
-  /// No morning stock request in the API.
+  /// "I'm coming" or "Not today" (`POST /riders/me/shift-plan/reply`). A day
+  /// with no plan has nothing to answer.
   @override
-  Future<void> replyToStockRequest(String uid, String shiftId, StockRequestStatus reply) async {}
+  Future<void> replyToStockRequest(String uid, String shiftId, StockRequestStatus reply) async {
+    if (_session.shiftPlan == null) return;
+    try {
+      await _session.replyToShiftPlan(reply == StockRequestStatus.notWorkingToday ? 'not_today' : 'coming');
+    } on RiderApiException catch (e) {
+      throw AppException(e.code);
+    }
+  }
 
   @override
   Future<void> setPhase(String uid, String shiftId, ShiftPhase phase) async {
@@ -115,10 +152,11 @@ class ApiShiftRepository implements ShiftRepository {
         for (final key in RiderApiSession.shiftKeys) key: null,
       });
     }
-    // At the node: the shift starts there, and there's nothing to wait for.
+    // At the node: the shift starts there. Scanning follows once the stock is
+    // packed; until then the rider waits at the hub (Shift 53).
     if (phase == ShiftPhase.atHub && _session.day['refillHub'] == null) {
       await _startShift();
-      next = ShiftPhase.scanning;
+      if (stockRequestOf(_session.shiftPlan) == StockRequestStatus.ready) next = ShiftPhase.scanning;
     }
     if (phase == ShiftPhase.ended) await _endShift();
     await _session.setDay({'phase': next.name});
@@ -128,7 +166,8 @@ class ApiShiftRepository implements ShiftRepository {
     final node = _session.assignedNode;
     if (node == null) throw const AppException('no_node');
     try {
-      await _session.api.startShift({'node_id': node.id});
+      // This phone's device, so another phone of the rider's can tell.
+      await _session.api.startShift({'node_id': node.id, 'device_id': ?_session.api.deviceId});
     } on RiderApiException catch (e) {
       // rider_not_approved, rider_not_verified, shift_limit_reached,
       // no_scooter_at_node: no frame says why, the screen stays.
@@ -211,14 +250,20 @@ class ApiShiftRepository implements ShiftRepository {
 }
 
 /// Only verified riders can start a shift (`GET /riders/me/verification`).
-/// The API has no "open on another phone".
+/// The open shift's `device_id` says which phone started it.
 class ApiShiftSessionRepository implements ShiftSessionRepository {
   ApiShiftSessionRepository(this._session);
 
   final RiderApiSession _session;
 
+  /// Open on another phone: the shift was started on a device that isn't this one.
   @override
-  Future<bool> openElsewhere(String uid, String shiftId) async => false;
+  Future<bool> openElsewhere(String uid, String shiftId) async {
+    await _session.ensureLoaded();
+    final started = _session.openShift?['device_id'] as String?;
+    final mine = _session.api.deviceId;
+    return started != null && mine != null && started != mine;
+  }
 
   @override
   Future<void> claim(String uid, String shiftId) async {

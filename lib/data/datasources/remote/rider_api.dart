@@ -8,6 +8,10 @@ class RiderApi {
 
   final RiderApiClient client;
 
+  /// The id `POST /riders/me/devices` gave this phone, once registered. A
+  /// shift started here carries it, so another phone can tell.
+  String? deviceId;
+
   // ── Sign-in ──
   Future<Map<String, dynamic>> requestOtp(String phone) =>
       client.post(RiderApiEndpoints.otpRequest, body: {'phone': phone}, auth: false);
@@ -19,6 +23,9 @@ class RiderApi {
 
   // ── Rider ──
   Future<Map<String, dynamic>> getRider() => client.get(RiderApiEndpoints.me);
+  Future<Map<String, dynamic>> updateRider(Map<String, dynamic> changes) =>
+      client.patch(RiderApiEndpoints.me, body: changes, idempotent: true);
+  Future<Map<String, dynamic>> listNotifications() => client.get(RiderApiEndpoints.notifications);
   Future<Map<String, dynamic>> getRiderState() => client.get(RiderApiEndpoints.state);
   Future<Map<String, dynamic>> registerDevice(Map<String, dynamic> device) =>
       client.post(RiderApiEndpoints.devices, body: device, idempotent: true);
@@ -44,11 +51,16 @@ class RiderApi {
   Future<Map<String, dynamic>> endShift() => client.post(RiderApiEndpoints.shiftEnd, idempotent: true);
   Future<Map<String, dynamic>> acceptRelocation(String relocationId) =>
       client.post(RiderApiEndpoints.acceptRelocation(relocationId), idempotent: true);
+  Future<Map<String, dynamic>> getShiftPlan() => client.get(RiderApiEndpoints.shiftPlan);
+  Future<Map<String, dynamic>> replyToShiftPlan(String reply) =>
+      client.post(RiderApiEndpoints.shiftPlanReply, body: {'reply': reply}, idempotent: true);
 
   // ── Stock ──
   Future<Map<String, dynamic>> getStock() => client.get(RiderApiEndpoints.stock);
   Future<Map<String, dynamic>> scanStock(Map<String, dynamic> scan, {String? idempotencyKey}) =>
       client.post(RiderApiEndpoints.stockScan, body: scan, idempotent: true, idempotencyKey: idempotencyKey);
+  Future<Map<String, dynamic>> quarantineLot(String lotId, String reason) =>
+      client.post(RiderApiEndpoints.quarantineLot(lotId), body: {'reason': reason}, idempotent: true);
 
   // ── Offers and orders ──
   Future<Map<String, dynamic>> listOffers() => client.get(RiderApiEndpoints.offers);

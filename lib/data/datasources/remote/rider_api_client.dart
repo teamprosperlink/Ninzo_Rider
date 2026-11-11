@@ -125,6 +125,9 @@ class RiderApiClient {
     idempotencyKey: idempotencyKey ?? (idempotent ? newIdempotencyKey() : null),
   );
 
+  Future<Map<String, dynamic>> patch(String path, {Object? body, bool idempotent = true}) =>
+      _send('PATCH', path, body: body, idempotencyKey: idempotent ? newIdempotencyKey() : null);
+
   Future<Map<String, dynamic>> delete(String path, {bool idempotent = true}) =>
       _send('DELETE', path, idempotencyKey: idempotent ? newIdempotencyKey() : null);
 

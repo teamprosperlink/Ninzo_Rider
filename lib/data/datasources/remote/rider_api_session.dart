@@ -5,8 +5,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/constants/app_strings.dart';
-
 import 'rider_api.dart';
 import 'rider_api_client.dart';
 import 'rider_api_stream.dart';
@@ -166,16 +164,22 @@ class RiderApiSession {
   /// null when the server has none (staging: 404).
   String? verification;
 
-  /// What the server told this rider, newest first (Profile 05): the spot of
-  /// each shift and each suggested move. Kept on the phone.
-  List<Map<String, dynamic>> notes = const [];
-  String? _notesKey;
+  /// `GET /riders/me/notifications`: what the server told this rider, newest
+  /// first (Profile 05).
+  List<Map<String, dynamic>> notifications = const [];
+
+  /// `GET /riders/me/shift-plan`: today's planned shift, the morning stock
+  /// request and the hub's packing; null on a day with none.
+  Map<String, dynamic>? shiftPlan;
 
   /// Where verification goes next (`upload_url`, `redirect_url`), once a
   /// failed or expired one was started again.
   Map<String, dynamic>? verificationNext;
   final itemNames = <String, String>{};
   final hubIds = <String, String>{};
+
+  /// The zone's hubs from `GET /restock/options`, with `manager_phone`.
+  List<Map<String, dynamic>> hubs = const [];
 
   /// Orders this rider has had, by id, as last seen.
   final orders = <String, Map<String, dynamic>>{};
@@ -392,8 +396,8 @@ class RiderApiSession {
       if (slow || moved) await refreshStock();
       if (slow || moved || _feeMissing()) await _refreshEarnings();
       if (slow || moved) await _refreshRestock();
+      if (slow || moved) await _refreshPlanAndNotifications();
       await _followActiveOrder();
-      await _noteNews();
       _updatePings();
       // A poll that brings nothing new doesn't rebuild anything.
       if (_changed()) notify();
@@ -421,6 +425,10 @@ class RiderApiSession {
       [...rideStartedAt.keys, ...arrivedAt.keys],
       [for (final o in offers) o['id']],
       restockDetail,
+      shiftPlan,
+      notifications,
+      hubs,
+      rider,
       day,
     ]);
     if (picture == _lastPicture) return false;
@@ -453,7 +461,8 @@ class RiderApiSession {
         for (final item in (options['items'] as List? ?? const []).cast<Map<String, dynamic>>()) {
           itemNames[item['item_id'] as String] = item['name'] as String? ?? '';
         }
-        for (final hub in (options['hubs'] as List? ?? const []).cast<Map<String, dynamic>>()) {
+        hubs = [...(options['hubs'] as List? ?? const []).cast<Map<String, dynamic>>()];
+        for (final hub in hubs) {
           hubIds[hub['name'] as String? ?? ''] = hub['id'] as String;
         }
       } on RiderApiException {
@@ -462,44 +471,37 @@ class RiderApiSession {
     }
   }
 
-  // ── What the server told the rider (Profile 05) ──
+  // ── Today's plan, and what the server told the rider (Profile 05) ──
 
-  static const _maxNotes = 30;
-
-  Future<void> _noteNews() async {
-    final riderId = rider?['id'] as String?;
-    if (riderId == null) return;
-    final key = 'riderApi.notes.$riderId';
-    if (key != _notesKey) {
-      _notesKey = key;
-      notes = [...((await _store.load(key))['notes'] as List? ?? const []).cast<Map<String, dynamic>>()];
+  Future<void> _refreshPlanAndNotifications() async {
+    try {
+      shiftPlan = (await api.getShiftPlan())['plan'] as Map<String, dynamic>?;
+    } on RiderApiException {
+      // Keeps the last.
     }
-    final seen = {for (final n in notes) n['id']};
-    final fresh = <Map<String, dynamic>>[];
-    final shift = state?['shift'] as Map<String, dynamic>?;
-    final node = nodeById(shift?['node_id'] as String?);
-    if (shift != null && node != null && !seen.contains('shift:${shift['id']}')) {
-      fresh.add({
-        'id': 'shift:${shift['id']}',
-        'title': AppStrings.dotPair(AppStrings.spotAssigned, node.name),
-        'body': AppStrings.headThereWhenYouReReady,
-        'at': shift['started_at'],
-      });
+    try {
+      notifications = [
+        ...((await api.listNotifications())['notifications'] as List? ?? const []).cast<Map<String, dynamic>>(),
+      ];
+    } on RiderApiException {
+      // Keeps the last.
     }
-    final move = relocation;
-    final moveNode = nodeById(move?['node_id'] as String?);
-    if (move != null && moveNode != null && !seen.contains('move:${move['id']}')) {
-      fresh.add({
-        'id': 'move:${move['id']}',
-        'title': AppStrings.ordersWaitingAt(moveNode.name),
-        'body': AppStrings.yourRideThereIsPaidTime2,
-        'at': clock().toUtc().toIso8601String(),
-      });
-    }
-    if (fresh.isEmpty) return;
-    notes = [...fresh, ...notes].take(_maxNotes).toList();
-    await _store.save(key, {'notes': notes});
   }
+
+  /// `POST /riders/me/shift-plan/reply`: coming or not_today.
+  Future<void> replyToShiftPlan(String reply) async {
+    shiftPlan = (await api.replyToShiftPlan(reply))['plan'] as Map<String, dynamic>?;
+    notify();
+  }
+
+  /// `PATCH /riders/me`: the rider's own details; the reply is the rider now.
+  Future<void> updateRider(Map<String, dynamic> changes) async {
+    rider = (await api.updateRider(changes))['rider'] as Map<String, dynamic>?;
+    notify();
+  }
+
+  /// The zone's hub named [name], or its first.
+  Map<String, dynamic>? hubNamed(String? name) => hubs.where((h) => h['name'] == name).firstOrNull ?? hubs.firstOrNull;
 
   // ── Kept on the phone ──
 
@@ -713,6 +715,9 @@ class RiderApiSession {
     lots = const [];
     earnings = null;
     suggestions = const [];
+    shiftPlan = null;
+    notifications = const [];
+    verification = null;
     orders.clear();
   }
 

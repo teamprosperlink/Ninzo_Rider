@@ -101,15 +101,24 @@ class _Server {
     final error = errors[path];
     if (error != null) return _json(error.$1, {'code': error.$2, 'retryable': error.$3});
     return switch ((request.method, path)) {
-      ('GET', '/riders/me') => _json(200, {
-        'rider': {
-          'id': 'rdr_1',
-          'name': riderStatus == 'applicant' ? null : 'Ravi',
-          'status': riderStatus,
-          'zone_id': 'zone_1',
-          ...riderFields,
-        },
+      ('GET', '/riders/me') => _json(200, {'rider': _rider()}),
+      ('PATCH', '/riders/me') => () {
+        riderFields = {...riderFields, ...jsonDecode(request.body) as Map<String, dynamic>};
+        return _json(200, {'rider': _rider()});
+      }(),
+      ('GET', '/riders/me/shift-plan') => _json(200, {'plan': plan}),
+      ('POST', '/riders/me/shift-plan/reply') when plan == null => _json(404, {'code': 'not_found', 'retryable': false}),
+      ('POST', '/riders/me/shift-plan/reply') => _json(200, {
+        'plan': plan = {...plan!, 'stock_reply': jsonDecode(request.body)['reply'], 'replied_at': '2026-11-11T06:00:00Z'},
       }),
+      ('GET', '/riders/me/notifications') => _json(200, {'notifications': notifications}),
+      ('POST', '/riders/me/stock/lot_1/quarantine') => () {
+        lots = [
+          for (final lot in lots)
+            if (lot['lot_id'] != 'lot_1') lot,
+        ];
+        return _json(200, {'lot_id': 'lot_1', 'quarantined_at': '2026-11-11T06:00:00Z'});
+      }(),
       ('GET', '/riders/me/state') => _json(200, {
         'shift': shift,
         'offers': offers,
@@ -140,7 +149,7 @@ class _Server {
       ('GET', '/riders/me/restock-suggestions') => _json(200, {'suggestions': suggestions}),
       ('GET', '/restock/options') => _json(200, {
         'hubs': [
-          {'id': 'hub_2', 'name': 'Hub 2'},
+          {'id': 'hub_2', 'name': 'Hub 2', ...hubFields},
         ],
         'items': [
           {'item_id': 'item_burger', 'name': 'Burger'},
@@ -206,9 +215,25 @@ class _Server {
 
   List<Map<String, dynamic>> listed = [];
 
-  /// Fields a test adds to the rider and to Node 7 (the backend's #158 fields).
+  /// Fields a test adds to the rider and to Node 7 (the backend's #158
+  /// fields); `PATCH /riders/me` adds to the rider's too.
   Map<String, dynamic> riderFields = {};
   Map<String, dynamic> node7Fields = {};
+  Map<String, dynamic> hubFields = {};
+
+  /// Today's shift plan (`GET /riders/me/shift-plan`), and the notifications.
+  Map<String, dynamic>? plan;
+  List<Map<String, dynamic>> notifications = [];
+
+  Map<String, dynamic> _rider() => {
+    'id': 'rdr_1',
+    'name': riderStatus == 'applicant' ? null : 'Ravi',
+    'status': riderStatus,
+    'zone_id': 'zone_1',
+    'email': null,
+    'area': null,
+    ...riderFields,
+  };
   String riderStatus = 'active';
   String temp = 'ok';
   String verification = 'verified';
@@ -438,7 +463,7 @@ void main() {
       expect(application.issues, isNotEmpty);
     });
 
-    test('An applicant gives their details first; the API has no field for them, so the phone keeps them', () async {
+    test('An applicant gives their details first; they go to PATCH /riders/me', () async {
       server.riderStatus = 'applicant';
       final registration = ApiRegistrationRepository(session);
       final seen = <RiderApplication?>[];
@@ -449,13 +474,36 @@ void main() {
         uid: 'rdr_1',
         phone: '+919800000090',
         name: 'Asha Rao',
-        area: const RiderArea(id: 'a1', name: 'Yelahanka', city: 'Bengaluru'),
+        area: const RiderArea(id: 'a1', name: 'Yelahanka', city: 'Bengaluru', latitude: 13.1, longitude: 77.59),
       );
       await pumpEventQueue();
+      final patch = server.requests.lastWhere((r) => r.method == 'PATCH');
+      expect(jsonDecode(patch.body), {
+        'name': 'Asha Rao',
+        'area': {'name': 'Yelahanka', 'city': 'Bengaluru', 'lat': 13.1, 'lng': 77.59},
+      });
+      expect(patch.headers['Idempotency-Key'], isNotNull);
       expect(seen.last!.name, 'Asha Rao');
       expect(seen.last!.area.name, 'Yelahanka');
+      expect(seen.last!.area.latitude, 13.1);
       expect(seen.last!.status, RegistrationStatus.draft);
       await sub.cancel();
+    });
+
+    test('An area without a place is not sent', () async {
+      server.riderStatus = 'applicant';
+      final registration = ApiRegistrationRepository(session);
+      await registration.watch('rdr_1').first;
+      await expectLater(
+        registration.saveDetails(
+          uid: 'rdr_1',
+          phone: '+919800000090',
+          name: 'Asha Rao',
+          area: const RiderArea(id: 'a1', name: 'Yelahanka', city: 'Bengaluru'),
+        ),
+        throwsA(isA<AppException>()),
+      );
+      expect(server.requests.where((r) => r.method == 'PATCH'), isEmpty);
     });
 
     test('Send for review starts the verification and uploads each photo', () async {
@@ -474,7 +522,7 @@ void main() {
         uid: 'rdr_1',
         phone: '+919800000090',
         name: 'Asha Rao',
-        area: const RiderArea(id: 'a1', name: 'Yelahanka', city: 'Bengaluru'),
+        area: const RiderArea(id: 'a1', name: 'Yelahanka', city: 'Bengaluru', latitude: 13.1, longitude: 77.59),
       );
       await registration.saveDocuments('rdr_1', {
         RiderDocument.selfie: DocumentUpload(files: {DocumentSide.photo: photo.path}),
@@ -486,11 +534,19 @@ void main() {
       expect(application!.status, RegistrationStatus.underReview);
     });
 
-    test("Notifications are what the server told the rider: the shift's spot", () async {
+    test('Notifications come from GET /riders/me/notifications, newest first', () async {
       server.shift = {'id': 'shf_1', 'node_id': 'node_7', 'started_at': '2026-11-11T05:00:00Z', 'ended_at': null};
+      server.notifications = [
+        {'id': 'n2', 'kind': 'orders_waiting', 'title': 'Orders waiting at Node 8', 'body': 'Paid time.', 'created_at': '2026-11-11T05:30:00Z'},
+        {'id': 'n1', 'kind': 'spot_assigned', 'title': 'Spot assigned · Node 7', 'body': 'Head there.', 'created_at': '2026-11-11T05:00:00Z'},
+      ];
       final notes = await ApiProfileRepository(session).watchNotifications('rdr_1').first;
-      expect(notes.single.title, 'Spot assigned · Node 7');
-      expect(notes.single.at, DateTime.utc(2026, 11, 11, 5).toLocal());
+      expect([for (final n in notes) n.title], ['Orders waiting at Node 8', 'Spot assigned · Node 7']);
+      expect(notes.last.at, DateTime.utc(2026, 11, 11, 5).toLocal());
+      // The phone makes none of its own.
+      server.notifications = [];
+      await session.refresh(full: true);
+      expect(await ApiProfileRepository(session).watchNotifications('rdr_1').first, isEmpty);
     });
 
     test("My shifts: each day's orders and pay from the earnings", () async {
@@ -959,6 +1015,127 @@ void main() {
       final shift = (await ApiShiftRepository(session).watchToday('rdr_1').first)!;
       expect(shift.hub.name, 'Hub 2');
       expect(shift.hub.point, const LatLng(12.95, 77.61));
+    });
+  });
+
+  group('Everything from the API', () {
+    Map<String, dynamic> plan({String reply = 'pending', String packing = 'not_started', String? readyAt}) => {
+      'id': 'pln_1',
+      'date': '2026-11-11',
+      'node_id': 'node_8',
+      'starts_at': '2026-11-11T07:00:00Z',
+      'ends_at': '2026-11-11T15:00:00Z',
+      'stock_reply': reply,
+      'replied_at': reply == 'pending' ? null : '2026-11-11T05:00:00Z',
+      'packing': packing,
+      'ready_at': readyAt,
+    };
+
+    test("Today's plan gives the shift's times, its node and the stock request", () async {
+      server.plan = plan();
+      final shifts = ApiShiftRepository(session);
+      var shift = (await shifts.watchToday('rdr_1').first)!;
+      expect(shift.start, DateTime.utc(2026, 11, 11, 7).toLocal());
+      expect(shift.end, DateTime.utc(2026, 11, 11, 15).toLocal());
+      expect(shift.hub.name, 'Node 8');
+      expect(shift.stockRequest, StockRequestStatus.awaitingReply);
+
+      await shifts.replyToStockRequest('rdr_1', shift.id, StockRequestStatus.requested);
+      expect(server.bodies('/shift-plan/reply').single, {'reply': 'coming'});
+      shift = (await shifts.watchToday('rdr_1').first)!;
+      expect(shift.stockRequest, StockRequestStatus.requested);
+
+      await shifts.replyToStockRequest('rdr_1', shift.id, StockRequestStatus.notWorkingToday);
+      expect(server.bodies('/shift-plan/reply').last, {'reply': 'not_today'});
+      expect((await shifts.watchToday('rdr_1').first)!.stockRequest, StockRequestStatus.notWorkingToday);
+    });
+
+    test('The hub packs, then the stock is ready; scanning waits for it', () async {
+      server.plan = plan(reply: 'coming', packing: 'packing', readyAt: '2026-11-11T06:20:00Z');
+      final shifts = ApiShiftRepository(session);
+      await session.ensureLoaded();
+      var shift = (await shifts.watchToday('rdr_1').first)!;
+      expect(shift.stockRequest, StockRequestStatus.packing);
+      expect(shift.stockReadyAt, DateTime.utc(2026, 11, 11, 6, 20).toLocal());
+      await shifts.setPhase('rdr_1', 'd', ShiftPhase.headingToHub);
+      await shifts.setPhase('rdr_1', 'd', ShiftPhase.atHub);
+      // The shift starts at the node, and the rider waits for the stock.
+      expect(server.bodies('/shifts/start'), hasLength(1));
+      expect((await shifts.watchToday('rdr_1').first)!.phase, ShiftPhase.atHub);
+      server.plan = plan(reply: 'coming', packing: 'ready', readyAt: '2026-11-11T06:10:00Z');
+      await session.refresh(full: true);
+      shift = (await shifts.watchToday('rdr_1').first)!;
+      expect(shift.stockRequest, StockRequestStatus.ready);
+      expect(shift.phase, ShiftPhase.scanning);
+    });
+
+    test("The open shift's planned end wins; with no plan there is nothing to answer", () async {
+      server.shift = {
+        'id': 'shf_1',
+        'node_id': 'node_7',
+        'started_at': '2026-11-11T05:00:00Z',
+        'ended_at': null,
+        'planned_end_at': '2026-11-11T12:30:00Z',
+        'device_id': null,
+      };
+      final shifts = ApiShiftRepository(session);
+      final shift = (await shifts.watchToday('rdr_1').first)!;
+      expect(shift.end, DateTime.utc(2026, 11, 11, 12, 30).toLocal());
+      expect(shift.stockRequest, StockRequestStatus.ready);
+      await shifts.replyToStockRequest('rdr_1', shift.id, StockRequestStatus.requested);
+      expect(server.bodies('/shift-plan/reply'), isEmpty);
+    });
+
+    test("The order's price is the order's total", () async {
+      final online = ApiOnlineRepository(session);
+      server.offers = [_offer('off_a1')];
+      await online.startOrder('rdr_1', 'd', (await online.watch('rdr_1', 'd').first).queue.single);
+      server.order = {...server.order, 'total': {'amount_minor': 14900, 'currency': 'INR'}, 'payment_method': 'prepaid'};
+      await session.fetchOrder('ord_0001');
+      final order = (await ApiDeliveryRepository(session).watchOrder('ord_0001').first)!;
+      expect(order.amount, 149);
+      expect(order.payment, OrderPayment.upi);
+    });
+
+    test("Call hub manager rings the hub's manager_phone", () async {
+      server.hubFields = {'manager_phone': '+919800000100'};
+      final shift = (await ApiShiftRepository(session).watchToday('rdr_1').first)!;
+      expect(shift.hub.managerPhone, '+919800000100');
+    });
+
+    test('A lot that got too warm is quarantined on the server', () async {
+      server.shift = {'id': 'shf_1', 'node_id': 'node_7', 'started_at': '2026-11-11T05:00:00Z', 'ended_at': null};
+      server.lots = [
+        {'lot_id': 'lot_1', 'item_id': 'item_burger', 'qty': 6, 'expiry': '2026-11-11T10:00:00Z', 'temp_status': 'alert'},
+      ];
+      await session.ensureLoaded();
+      await ApiStockRepository(session).moveToQuarantine('rdr_1', '2026-11-11', QuarantineRequest(lotId: 'lot_1', itemId: 'item_burger', at: now));
+      expect(server.bodies('/riders/me/stock/lot_1/quarantine').single, {'reason': 'temperature'});
+      expect(session.lots, isEmpty);
+      // A refusal won't change on a retry, so the sync moves on.
+      server.errors['/riders/me/stock/lot_1/quarantine'] = (409, 'lot_not_on_scooter', false);
+      await ApiStockRepository(session).moveToQuarantine('rdr_1', '2026-11-11', QuarantineRequest(lotId: 'lot_1', itemId: 'item_burger', at: now));
+      server.errors['/riders/me/stock/lot_1/quarantine'] = (503, 'service_unavailable', true);
+      await expectLater(
+        ApiStockRepository(session).moveToQuarantine('rdr_1', '2026-11-11', QuarantineRequest(lotId: 'lot_1', itemId: 'item_burger', at: now)),
+        throwsA(isA<AppException>()),
+      );
+    });
+
+    test('A shift started on another phone is open elsewhere; this phone sends its device', () async {
+      session.api.deviceId = 'dev_mine';
+      final shifts = ApiShiftRepository(session);
+      await session.ensureLoaded();
+      await shifts.setPhase('rdr_1', 'd', ShiftPhase.headingToHub);
+      await shifts.setPhase('rdr_1', 'd', ShiftPhase.atHub);
+      expect(server.bodies('/shifts/start').single, {'node_id': 'node_7', 'device_id': 'dev_mine'});
+      final elsewhere = ApiShiftSessionRepository(session);
+      server.shift = {...server.shift!, 'device_id': 'dev_mine'};
+      await session.refresh(full: true);
+      expect(await elsewhere.openElsewhere('rdr_1', 'd'), isFalse);
+      server.shift = {...server.shift!, 'device_id': 'dev_other'};
+      await session.refresh(full: true);
+      expect(await elsewhere.openElsewhere('rdr_1', 'd'), isTrue);
     });
   });
 }

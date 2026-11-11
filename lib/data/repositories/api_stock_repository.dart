@@ -145,9 +145,20 @@ class ApiStockRepository implements StockRepository, LotScanRepository {
   @override
   Future<void> uploadScans(String uid, String shiftId, List<StockScan> scans) async {}
 
-  /// The API has no quarantine call; the temperature alert is the server's.
+  /// The lot that got too warm leaves the scooter
+  /// (`POST /riders/me/stock/{lot_id}/quarantine`, reason temperature).
   @override
-  Future<void> moveToQuarantine(String uid, String shiftId, QuarantineRequest request) async {}
+  Future<void> moveToQuarantine(String uid, String shiftId, QuarantineRequest request) async {
+    try {
+      await _session.api.quarantineLot(request.lotId, 'temperature');
+    } on RiderApiException catch (e) {
+      // Without signal it waits for the next sync. A refusal (the lot is
+      // gone from the scooter, or held for an order) won't change on a retry.
+      if (e.retryable) throw AppException(e.code);
+    }
+    await _session.refreshStock();
+    _session.notify();
+  }
 
   /// There's nothing to prepare: a restock is confirmed on its own screens.
   @override

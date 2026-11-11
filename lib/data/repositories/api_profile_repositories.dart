@@ -18,14 +18,14 @@ import 'api_online_repository.dart';
 ///
 /// The API signs riders in with a phone and OTP only; an account exists once
 /// the operations team has added the number (status `applicant`, then
-/// `active`). It has no field for the name, area or document photos, so those
-/// stay on the phone until it does. Sending the documents starts the
-/// verification (`POST /riders/me/verification/start`, by hand until
-/// DigiLocker) and uploads each photo to the `upload_url` it returns; the
-/// review result comes from `GET /riders/me/verification`.
+/// `active`). The name and area go to `PATCH /riders/me` and come back from
+/// `GET /riders/me`. The document photos are files on the phone until "Send
+/// for review" starts the verification (`POST /riders/me/verification/start`,
+/// by hand until DigiLocker) and uploads each to the `upload_url` it returns;
+/// the review result comes from `GET /riders/me/verification`.
 ///
-/// An applicant who hasn't given their details yet has no application, so
-/// Register asks for them; an active rider is approved and goes to Home.
+/// An applicant who hasn't given their area yet has no application, so
+/// Register asks for their details; an active rider is approved and goes to Home.
 class ApiRegistrationRepository implements RegistrationRepository {
   ApiRegistrationRepository(this._session, {http.Client? client}) : _client = client ?? http.Client();
 
@@ -34,7 +34,8 @@ class ApiRegistrationRepository implements RegistrationRepository {
   bool _verificationAsked = false;
   String? _phone;
 
-  /// What the phone keeps for [uid]: name, area, document photos, submitted, welcomed.
+  /// What the phone keeps for [uid]: the document photos until they are
+  /// uploaded, and which screens were seen (submitted, registered here, welcomed).
   Map<String, dynamic> _kept = {};
   String? _keptFor;
 
@@ -68,9 +69,9 @@ class ApiRegistrationRepository implements RegistrationRepository {
     if (rider == null) return null;
     final status = rider['status'] as String?;
     final applicant = status == 'applicant';
-    final name = _kept['name'] as String?;
+    final area = rider['area'] as Map<String, dynamic>?;
     // An applicant gives their details first (Register 01).
-    if (applicant && name == null) return null;
+    if (applicant && area == null) return null;
     final node = _session.assignedNode;
     final verification = _session.verification;
     final issue = switch (verification) {
@@ -81,9 +82,9 @@ class ApiRegistrationRepository implements RegistrationRepository {
     final submitted = _kept['submitted'] == true;
     return RiderApplication(
       uid: uid,
-      name: (rider['name'] as String?) ?? name ?? '',
+      name: rider['name'] as String? ?? '',
       phone: _phone ?? '',
-      area: _area() ??
+      area: _area(area) ??
           RiderArea(
             id: rider['zone_id'] as String? ?? '',
             name: node?.name ?? '',
@@ -104,16 +105,16 @@ class ApiRegistrationRepository implements RegistrationRepository {
       hubLabel: node?.name,
       spotName: node?.name,
       // A rider who registered on this phone sees "You're approved" once.
-      welcomed: !applicant && (_kept['name'] == null || _kept['welcomed'] == true),
+      welcomed: !applicant && (_kept['registeredHere'] != true || _kept['welcomed'] == true),
       onHold: status == 'suspended',
     );
   }
 
-  RiderArea? _area() {
-    final a = _kept['area'] as Map<String, dynamic>?;
+  /// The rider's `area` from the API.
+  static RiderArea? _area(Map<String, dynamic>? a) {
     if (a == null) return null;
     return RiderArea(
-      id: a['id'] as String? ?? '',
+      id: '',
       name: a['name'] as String? ?? '',
       city: a['city'] as String? ?? '',
       latitude: (a['lat'] as num?)?.toDouble(),
@@ -144,10 +145,20 @@ class ApiRegistrationRepository implements RegistrationRepository {
     required String phone,
     required String name,
     required RiderArea area,
-  }) => _save(uid, {
-    'name': name,
-    'area': {'id': area.id, 'name': area.name, 'city': area.city, 'lat': area.latitude, 'lng': area.longitude},
-  });
+  }) async {
+    final lat = area.latitude, lng = area.longitude;
+    // The API keeps an area as a place; Register's search always gives one.
+    if (lat == null || lng == null) throw const AppException('area_without_place');
+    try {
+      await _session.updateRider({
+        'name': name,
+        'area': {'name': area.name, 'city': area.city, 'lat': lat, 'lng': lng},
+      });
+    } on RiderApiException catch (e) {
+      throw AppException(e.code);
+    }
+    await _save(uid, {'registeredHere': true});
+  }
 
   /// Kept on the phone until "Send for review" uploads it.
   @override
@@ -211,10 +222,10 @@ class ApiAreaRepository implements AreaRepository {
   Future<List<RiderArea>> all() async => const [];
 }
 
-/// Profile 04–06 from the rider API: the shift's start is when the spot was
-/// assigned, the last 7 days come from `GET /riders/me/earnings?date=` and
-/// what the phone kept of each day, and the notifications are what the
-/// server told this rider (each shift's spot, each suggested move).
+/// Profile 04–06 from the rider API: when the spot was assigned and "Rider
+/// since", the last 7 days from `GET /riders/me/earnings?date=` and what the
+/// phone kept of each day, and the notifications from
+/// `GET /riders/me/notifications`.
 class ApiProfileRepository implements ProfileRepository {
   ApiProfileRepository(this._session);
 
@@ -239,12 +250,12 @@ class ApiProfileRepository implements ProfileRepository {
   @override
   Stream<List<RiderNotification>> watchNotifications(String uid) => _session.watch(
     () => [
-      for (final note in _session.notes)
+      for (final note in _session.notifications)
         RiderNotification(
           id: note['id'] as String,
           title: note['title'] as String? ?? '',
           body: note['body'] as String? ?? '',
-          at: RiderApiSession.parseTime(note['at']) ?? _session.clock(),
+          at: RiderApiSession.parseTime(note['created_at']) ?? _session.clock(),
         ),
     ],
   );

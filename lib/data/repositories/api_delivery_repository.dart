@@ -67,9 +67,9 @@ class ApiDeliveryRepository implements DeliveryRepository {
         for (final line in (json['items'] as List? ?? const []).cast<Map<String, dynamic>>())
           OrderItem(name: line['name'] as String? ?? '', quantity: (line['qty'] as num?)?.toInt() ?? 0),
       ],
-      // Every API handover takes the customer's OTP; the API has no price.
+      // `payment_method`: prepaid (paid online, the handover takes the customer's OTP) is the only one so far.
       payment: OrderPayment.upi,
-      amount: 0,
+      amount: ApiOnlineRepository.rupeesOf(json['total']).round(),
       // The customer's clock starts when the ride does.
       assignedAt: _session.rideStartOf(orderId) ?? RiderApiSession.parseTime(json['rider_accepted_at']) ?? _session.clock(),
       status: status,
