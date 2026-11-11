@@ -29,16 +29,20 @@ class ApiStockRepository implements StockRepository, LotScanRepository {
 
   StockManifest _manifest(String loadId) {
     final quantities = <String, int>{};
+    final images = <String, String>{};
     final lots = <String, StockLot>{};
     for (final lot in _lotsOf(loadId)) {
       final item = lot['item_id'] as String;
       quantities[item] = (quantities[item] ?? 0) + ((lot['qty'] as num?)?.toInt() ?? 0);
+      // The menu item's photo (`image_url`), null when it has none.
+      final image = lot['image_url'] as String?;
+      if (image != null) images[item] = image;
       lots[lot['lot_id'] as String] = _lot(lot);
     }
     return StockManifest(
       items: [
         for (final MapEntry(:key, :value) in quantities.entries)
-          StockItem(id: key, name: _session.itemName(key), quantity: value),
+          StockItem(id: key, name: _session.itemName(key), quantity: value, image: images[key]),
       ],
       lots: lots,
       open: true,

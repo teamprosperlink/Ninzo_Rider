@@ -61,7 +61,7 @@ class ApiDeliveryRepository implements DeliveryRepository {
         .firstOrNull;
     return DeliveryOrder(
       id: orderId,
-      number: apiOrderNumber(json['offer_id'] as String? ?? orderId),
+      number: apiOrderNumber(json, json['offer_id'] as String? ?? orderId),
       gate: DeliveryGate(name: gate['label'] as String? ?? '', landmark: gate['entry_notes'] as String? ?? '', point: point),
       items: [
         for (final line in (json['items'] as List? ?? const []).cast<Map<String, dynamic>>())

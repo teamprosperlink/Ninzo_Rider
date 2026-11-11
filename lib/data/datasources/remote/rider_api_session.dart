@@ -14,17 +14,21 @@ import 'rider_event_queue.dart';
 
 /// A node: where scooters wait and where the rider waits for offers.
 class ApiNode {
-  const ApiNode({required this.id, required this.name, required this.point});
+  const ApiNode({required this.id, required this.name, required this.point, this.hubDistanceM});
 
   factory ApiNode.fromJson(Map<String, dynamic> json) => ApiNode(
     id: json['id'] as String,
     name: json['name'] as String? ?? '',
     point: LatLng((json['lat'] as num).toDouble(), (json['lng'] as num).toDouble()),
+    hubDistanceM: (json['hub_distance_m'] as num?)?.toInt(),
   );
 
   final String id;
   final String name;
   final LatLng point;
+
+  /// Straight-line metres to the zone's nearest active hub; null without one.
+  final int? hubDistanceM;
 }
 
 /// One GPS fix, as the location ping sends it.

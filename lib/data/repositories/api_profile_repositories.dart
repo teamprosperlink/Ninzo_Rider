@@ -224,9 +224,16 @@ class ApiProfileRepository implements ProfileRepository {
 
   @override
   Stream<ProfileFacts> watchFacts(String uid) => _session.watch(
-    () => ProfileFacts(
-      spotAssignedAt: RiderApiSession.parseTime((_session.state?['shift'] as Map<String, dynamic>?)?['started_at']),
-    ),
+    () {
+      final shift = _session.state?['shift'] as Map<String, dynamic>?;
+      final rider = _session.rider;
+      return ProfileFacts(
+        // "Rider since": approval, or the account's creation before it.
+        riderSince: RiderApiSession.parseTime(rider?['approved_at']) ?? RiderApiSession.parseTime(rider?['created_at']),
+        // `node_assigned_at` moves with an accepted relocation; older servers have only the start.
+        spotAssignedAt: RiderApiSession.parseTime(shift?['node_assigned_at']) ?? RiderApiSession.parseTime(shift?['started_at']),
+      );
+    },
   );
 
   @override

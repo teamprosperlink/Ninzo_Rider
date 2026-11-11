@@ -9,9 +9,11 @@ import '../../domain/usecases/spot_usecases.dart';
 import '../datasources/remote/rider_api_client.dart';
 import '../datasources/remote/rider_api_session.dart';
 
-/// "A2931" for an order: the API has no order number, so the end of the
-/// offer's id stands in for it.
-String apiOrderNumber(String id) {
+/// "A2931" for an order: the offer's or order's `order_number`. A server
+/// from before it had one gets the end of [id] instead.
+String apiOrderNumber(Map<String, dynamic> json, String id) {
+  final number = json['order_number'] as String?;
+  if (number != null && number.isNotEmpty) return number;
   // "off_mock01" gives MOCK01; a UUID gives its last six characters.
   final part = id.split(RegExp('[_-]')).last;
   return (part.length > 6 ? part.substring(part.length - 6) : part).toUpperCase();
@@ -91,7 +93,7 @@ class ApiOnlineRepository implements OnlineRepository {
     final lines = (offer['items'] as List? ?? const []).cast<Map<String, dynamic>>();
     return AssignedOrder(
       id: offer['id'] as String,
-      number: apiOrderNumber(offer['id'] as String),
+      number: apiOrderNumber(offer, offer['id'] as String),
       gate: gate['label'] as String? ?? '',
       items: lines.fold(0, (sum, line) => sum + ((line['qty'] as num?)?.toInt() ?? 0)),
       place: gate['entry_notes'] as String?,
@@ -112,8 +114,11 @@ class ApiOnlineRepository implements OnlineRepository {
     final meters = SpotRules.metersBetween(from, node.point);
     final nudge = RelocationNudge(
       spot: Spot(name: node.name, point: node.point),
-      // "3 orders expected, nobody nearby": the API has only the reason.
-      ordersWaiting: int.tryParse((move['reason'] as String? ?? '').split(' ').first) ?? 0,
+      // `orders_waiting`; older suggestions have only the reason ("3 orders expected, nobody nearby").
+      ordersWaiting:
+          (move['orders_waiting'] as num?)?.toInt() ??
+          int.tryParse((move['reason'] as String? ?? '').split(' ').first) ??
+          0,
       meters: meters.round(),
       rideMinutes: SpotRules.rideMinutes(meters),
     );
@@ -161,12 +166,13 @@ class ApiOnlineRepository implements OnlineRepository {
     RestockShortage? shortage;
     if (request['state'] == 'partial' && shortfall != null) {
       final short = items.where((i) => ((i['filled_qty'] as num?) ?? 0) < ((i['qty'] as num?) ?? 0)).firstOrNull;
+      final otherHub = shortfall['other_hub'] as Map<String, dynamic>?;
       shortage = RestockShortage(
         itemName: short?['name'] as String? ?? '',
         asked: (short?['qty'] as num?)?.toInt() ?? 0,
         canGive: (short?['filled_qty'] as num?)?.toInt() ?? 0,
-        otherHubName: (shortfall['other_hub'] as Map<String, dynamic>?)?['name'] as String? ?? hub,
-        otherHubKm: 0,
+        otherHubName: otherHub?['name'] as String? ?? hub,
+        otherHubKm: ((otherHub?['distance_m'] as num?) ?? 0) / 1000,
         otherHubHas: 0,
       );
     }
@@ -176,6 +182,11 @@ class ApiOnlineRepository implements OnlineRepository {
       lines: _lines(request),
       arriveBy: RiderApiSession.parseTime(request['arrive_by']),
       readyAt: RiderApiSession.parseTime(request['slot_at']),
+      // `ready_in_s`: seconds to the hub slot, rounded up to minutes.
+      readyInMinutes: switch ((request['ready_in_s'] as num?)?.toInt()) {
+        final int s => (s + 59) ~/ 60,
+        null => null,
+      },
       packing: switch (request['state']) {
         'hub_accepted' => HubPacking.accepted,
         'packing' => HubPacking.packing,

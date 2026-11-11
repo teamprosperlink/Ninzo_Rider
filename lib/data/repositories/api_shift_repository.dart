@@ -47,15 +47,15 @@ class ApiShiftRepository implements ShiftRepository {
       id: _session.indiaDate,
       start: started ?? DateTime(now.year, now.month, now.day),
       end: (started ?? now).add(defaultLength),
-      hub: Hub(id: node.id, name: node.name, area: '', point: node.point),
+      hub: _refillHub(refillHub) ?? Hub(id: node.id, name: node.name, area: '', point: node.point),
       spot: spot == null
           ? Spot(name: node.name, point: node.point)
           : Spot(
               name: spot['name'] as String? ?? '',
               point: LatLng((spot['lat'] as num).toDouble(), (spot['lng'] as num).toDouble()),
             ),
-      // No plate or battery in the API.
-      scooter: const Scooter(plate: ''),
+      scooter: _scooter(open),
+      hubDistanceKm: node.hubDistanceM == null ? null : node.hubDistanceM! / 1000,
       stockRequest: StockRequestStatus.ready,
       phase: phase,
       stock: StockLoad(
@@ -66,6 +66,34 @@ class ApiShiftRepository implements ShiftRepository {
       ),
       refill: refillHub == null ? null : RefillLoad(hubName: refillHub),
       refillRound: (day['refillRound'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// On a refill, the hub of the restock request or suggestion named [name],
+  /// where the hub trip goes; null without one, or from a server that sends
+  /// no hub location.
+  Hub? _refillHub(String? name) {
+    if (name == null) return null;
+    final hubs = [
+      _session.restockRequest?['hub'],
+      for (final s in _session.suggestions) s['hub'],
+    ].whereType<Map<String, dynamic>>();
+    final hub = hubs.where((h) => h['name'] == name && h['lat'] is num && h['lng'] is num).firstOrNull;
+    if (hub == null) return null;
+    return Hub(
+      id: hub['id'] as String? ?? '',
+      name: name,
+      area: '',
+      point: LatLng((hub['lat'] as num).toDouble(), (hub['lng'] as num).toDouble()),
+    );
+  }
+
+  /// The open shift's scooter: its plate and battery (null until scooter data exists).
+  static Scooter _scooter(Map<String, dynamic>? open) {
+    final scooter = open?['scooter'] as Map<String, dynamic>?;
+    return Scooter(
+      plate: scooter?['plate'] as String? ?? '',
+      batteryPercent: (scooter?['battery_pct'] as num?)?.toInt(),
     );
   }
 

@@ -102,7 +102,13 @@ class _Server {
     if (error != null) return _json(error.$1, {'code': error.$2, 'retryable': error.$3});
     return switch ((request.method, path)) {
       ('GET', '/riders/me') => _json(200, {
-        'rider': {'id': 'rdr_1', 'name': riderStatus == 'applicant' ? null : 'Ravi', 'status': riderStatus, 'zone_id': 'zone_1'},
+        'rider': {
+          'id': 'rdr_1',
+          'name': riderStatus == 'applicant' ? null : 'Ravi',
+          'status': riderStatus,
+          'zone_id': 'zone_1',
+          ...riderFields,
+        },
       }),
       ('GET', '/riders/me/state') => _json(200, {
         'shift': shift,
@@ -114,7 +120,7 @@ class _Server {
       ('GET', '/nodes') => _json(200, {
         'assigned_node_id': 'node_7',
         'nodes': [
-          {'id': 'node_7', 'name': 'Node 7', 'lat': 12.97, 'lng': 77.59, 'fullness_pct': 40},
+          {'id': 'node_7', 'name': 'Node 7', 'lat': 12.97, 'lng': 77.59, 'fullness_pct': 40, ...node7Fields},
           {'id': 'node_8', 'name': 'Node 8', 'lat': 12.98, 'lng': 77.60, 'fullness_pct': 10},
         ],
         'relocation': relocation,
@@ -199,6 +205,10 @@ class _Server {
   });
 
   List<Map<String, dynamic>> listed = [];
+
+  /// Fields a test adds to the rider and to Node 7 (the backend's #158 fields).
+  Map<String, dynamic> riderFields = {};
+  Map<String, dynamic> node7Fields = {};
   String riderStatus = 'active';
   String temp = 'ok';
   String verification = 'verified';
@@ -854,6 +864,102 @@ void main() {
       stale: true,
     );
     expect(stale['speed_mps'], 0);
+  });
+
+  group("The backend's rider fields (#158)", () {
+    final openShift = {
+      'id': 'shf_1',
+      'node_id': 'node_7',
+      'started_at': '2026-11-11T05:00:00Z',
+      'ended_at': null,
+      'node_assigned_at': '2026-11-11T05:40:00Z',
+      'scooter': {'id': 'sct_1', 'plate': 'KA01AB1234', 'battery_pct': 64},
+    };
+
+    test("The order number is the server's", () async {
+      server.offers = [
+        {..._offer('off_a1'), 'order_number': 'A2931'},
+      ];
+      final status = await ApiOnlineRepository(session).watch('rdr_1', 'd').first;
+      expect(status.queue.single.number, 'A2931');
+      // An order reads it the same way; a server without one falls back on the id.
+      expect(apiOrderNumber({'order_number': 'B0042'}, 'ord_0001'), 'B0042');
+      expect(apiOrderNumber(const {}, 'off_a1'), 'A1');
+    });
+
+    test("The shift's scooter, and the metres from the node to the hub", () async {
+      server.shift = openShift;
+      server.node7Fields = {'hub_distance_m': 1500};
+      final shift = (await ApiShiftRepository(session).watchToday('rdr_1').first)!;
+      expect(shift.scooter.plate, 'KA01AB1234');
+      expect(shift.scooter.batteryPercent, 64);
+      expect(shift.hubDistanceKm, 1.5);
+    });
+
+    test('Rider since is the approval; the spot was assigned at node_assigned_at', () async {
+      server.shift = openShift;
+      server.riderFields = {'created_at': '2025-01-05T00:00:00Z', 'approved_at': '2025-02-10T00:00:00Z'};
+      final facts = await ApiProfileRepository(session).watchFacts('rdr_1').first;
+      expect(facts.riderSince, DateTime.utc(2025, 2, 10).toLocal());
+      expect(facts.spotAssignedAt, DateTime.utc(2026, 11, 11, 5, 40).toLocal());
+    });
+
+    test('A move counts orders_waiting', () async {
+      server.relocation = {
+        'id': 'rel_1',
+        'node_id': 'node_8',
+        'reason': 'demand',
+        'expires_at': '2099-01-01T00:00:00Z',
+        'orders_waiting': 5,
+      };
+      final nudge = (await ApiOnlineRepository(session).watch('rdr_1', 'd').first).nudge!;
+      expect(nudge.ordersWaiting, 5);
+    });
+
+    test("Each stock item shows the menu item's photo", () async {
+      server.shift = openShift;
+      server.lots = [
+        {
+          'lot_id': 'lot_1',
+          'item_id': 'item_burger',
+          'qty': 6,
+          'expiry': '2026-11-11T10:00:00Z',
+          'temp_status': 'ok',
+          'image_url': 'https://img.test/burger.jpg',
+        },
+      ];
+      await session.ensureLoaded();
+      final local = await LoadStock(ApiStockRepository(session), InMemoryStockScanStore())('rdr_1', '2026-11-11');
+      expect(local.manifest!.items.single.image, 'https://img.test/burger.jpg');
+    });
+
+    test("A restock shows ready-in, the other hub's distance, and the refill trip goes to the hub", () async {
+      server.shift = openShift;
+      server.restockRequest = {
+        'id': 'rst_9',
+        'state': 'partial',
+        'hub': {'id': 'hub_2', 'name': 'Hub 2', 'lat': 12.95, 'lng': 77.61},
+        'items': [
+          {'item_id': 'item_burger', 'name': 'Burger', 'qty': 4, 'filled_qty': 2},
+        ],
+        'slot_at': null,
+        'arrive_by': null,
+        'ready_in_s': 125,
+        'shortfall': {
+          'action': 'other_hub',
+          'other_hub': {'id': 'hub_4', 'name': 'Hub 4', 'lat': 12.99, 'lng': 77.62, 'distance_m': 2300},
+        },
+      };
+      final restock = (await ApiOnlineRepository(session).watch('rdr_1', 'd').first).restock!;
+      expect(restock.readyInMinutes, 3);
+      expect(restock.shortage!.otherHubName, 'Hub 4');
+      expect(restock.shortage!.otherHubKm, 2.3);
+
+      await session.setDay({'refillHub': 'Hub 2'});
+      final shift = (await ApiShiftRepository(session).watchToday('rdr_1').first)!;
+      expect(shift.hub.name, 'Hub 2');
+      expect(shift.hub.point, const LatLng(12.95, 77.61));
+    });
   });
 }
 
