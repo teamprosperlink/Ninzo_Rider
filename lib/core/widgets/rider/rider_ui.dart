@@ -2,7 +2,7 @@
 /// Import this one file in screens.
 library;
 
-export '../../design/rider_tokens.dart';
+export '../../theme/app_theme.dart';
 export 'rider_art.dart';
 export 'rider_buttons.dart';
 export 'rider_cards.dart';

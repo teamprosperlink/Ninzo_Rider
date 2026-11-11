@@ -2,12 +2,12 @@
 
 Food-delivery **rider** app for Android and iOS. A rider picks up a ready order at the restaurant and hands it to the customer **within 90 seconds**. Orders are created by the customer app or a backend; this app covers everything the rider does.
 
-Stack: Flutter, Riverpod 3, Firebase (Phone and Anonymous Auth, Cloud Firestore, Storage), OpenStreetMap (`flutter_map`).
+Stack: Flutter, Riverpod 3, the Ninzo rider API (staging, `STAGING_API_URL` in `.env`), Firebase Cloud Messaging for the push token only, Google Maps (`google_maps_flutter`).
 
 ## Rider features
 
-- **Login**: mobile number + OTP.
-- **Register** (Figma Section 3): full name, mobile number and **area** (search a town or junction, or use the current location). There's no SMS code: "Continue" signs the new rider in anonymously (the number isn't verified), then the rider photographs five documents (Aadhaar front and back, driving licence, vehicle RC, selfie, bank account or UPI) and submits them. The scooter is electric and provided, so there's no vehicle choice. The review team approves (the system assigns hub and spot), asks for a retake, fails details or flags an expired document; the rider fixes and resubmits. After approval the rider sees their spot, then Home.
+- **Login**: mobile number + OTP, through the rider API.
+- **Register** (Figma Section 3): full name, mobile number and **area** (search a town or junction, or use the current location). "Continue" sends an OTP through the rider API on Login's code screen; the API signs in only numbers the operations team has added (status `applicant`), and turns any other number away with `invalid_otp`. The rider API has no field for the name, area or photos yet, so they stay on the phone; "Send for review" starts the verification (`POST /riders/me/verification/start`) and uploads each photo to the `upload_url` it returns. The review result comes from `GET /riders/me/verification` (staging: 404 so far). After approval (`active`) the rider sees their spot, then Home.
 - **Morning stock request** (Figma Section 4): 1 hour before the shift a push asks the rider to confirm they're coming (**I'm coming** / **Not today**, right on the notification). The hub packs only after a yes; with no reply a reminder comes at 30 minutes and nothing is packed. "Your stock is ready at Hub 2" when the hub finishes.
 - **Home** (Section 5): the rider's day at a glance: stock not requested / off today (Ask hub to prepare), hub packing, stock ready, Start riding, then Collect your stock, Finish scanning and Stock loaded, with today's stock, spot and scooter.
 - **Before you start** (Section 6): helmet, phone charged (checked: at least 50% battery), scooter battery (from telemetry), location on (checked), insulated box, scooter clean. Go to hub unlocks when all are ticked.
@@ -24,27 +24,45 @@ Stack: Flutter, Riverpod 3, Firebase (Phone and Anonymous Auth, Cloud Firestore,
 
 ## Architecture: Clean Architecture + MVVM
 
-Organised by feature. Each feature has the same layers, and dependencies only point inwards:
+Organised by layer. Data and domain are flat; presentation has one folder per feature. Dependencies only point inwards:
 
 ```
 presentation  →  domain  ←  data
-     (views, viewmodels)   (entities, use cases,   (Firebase / device
+     (views, viewmodels)   (entities, use cases,   (rider API / device
                             repository contracts)   implementations)
-                   di/ wires data implementations into the use cases
+                   injection_container.dart wires data implementations into the use cases
 ```
 
-- `domain/`: pure Dart. Entities, repository interfaces and **use cases** (one class per action; every business rule lives here: OTP and code checks, which orders to offer, the 90-second window, KYC rules, stats).
-- `data/`: models that map Firestore documents to entities, and repository implementations.
-- `di/`: Riverpod providers for repositories and use cases. The only place that imports `data/`; tests override the repository providers with fakes.
-- `presentation/`: **Views** (widgets, no logic) watch **ViewModels** (Riverpod notifiers that call use cases and expose state) and shared state `providers/`.
-- The rule is checked by `test/architecture_test.dart`: ViewModels reach repositories only through use cases, Views never import `di/`, and domain and data stay free of what points at them. Demo pills (`demo_*.dart`) are the one exception, since they play the backend in demo mode.
+- `lib/domain/`: pure Dart. Entities, repository interfaces and **use cases** (one class per action; every business rule lives here: OTP and code checks, which orders to offer, the 90-second window, KYC rules, stats).
+- `lib/data/`: the rider API client and session, local JSON mapping, and repository implementations.
+- `lib/injection_container.dart`: Riverpod providers for repositories and use cases. The only place that imports a feature's `data/`; tests override the repository providers with fakes.
+- `lib/presentation/<feature>/`: **Views** (widgets, no logic) watch **ViewModels** (Riverpod notifiers that call use cases and expose state) and shared state `providers/`.
+- The rule is checked by `test/architecture_test.dart`: ViewModels reach repositories only through use cases, Views never import `injection_container.dart`, and domain and data stay free of what points at them. Demo pills (`demo_*.dart`) are the one exception, since they play the backend in demo mode.
 
 ```
 lib/
-  main.dart                  Firebase init + ProviderScope
-  app/                       MaterialApp, AppGate and AppStage (which root screen to show)
-  core/                      errors, DI (Firebase, clock), base ViewModel, config, theme, utils, widgets
-  features/
+  main.dart                  Firebase init (push token) + ProviderScope
+  injection_container.dart   Riverpod providers for every feature
+  core/
+    constants/               app_colors, app_strings (all text), app_sizes, app_numbers (AppLimits, AppMapConfig, AppOpacity), app_durations, app_patterns, app_keys, app_assets, app_mode, demo_data
+    api/                     api_endpoints (every endpoint)
+    theme/                   app_theme (fonts, text styles, spacing, radius, ThemeData)
+    utils/                   validators, formatters, time_format, launcher, clock
+    errors/, widgets/, presentation/   errors, shared widgets, base ViewModel
+  data/
+    models/                  local JSON mapping
+    repositories/            repository implementations (rider API, device, demo)
+    datasources/remote/      remote lookups that are not repositories (rider directory)
+    datasources/local/       local stores, notifications, photo picker
+  domain/
+    entities/                plain data types
+    repositories/            repository contracts
+    usecases/                one class per action, and the rules
+  presentation/<feature>/    views/, viewmodels/, providers/, widgets/
+  routing/app_router.dart    every screen link: AppStage, ShiftScreen, login, register, stock, order and handover steps
+
+Features, in presentation/:
+    app/                     MaterialApp, AppGate and AppStage (which root screen to show)
     auth/                    phone OTP login
     intro/                   splash, welcome, permissions, signed out
     account/                 the rider's user record, logout
@@ -58,57 +76,36 @@ test/                        unit tests for use cases and entities, widget tests
 legacy_backup/               an earlier offline-only version, kept for reference
 ```
 
-## Firebase data
+## Backend
 
-| Path | Contents | Who can write |
-|---|---|---|
-| `users/{uid}` | name, phone, email | the user |
-| `riders/{uid}` | name, phone, `area`, `documents` (`{aadhaar: {files: {front, back}, issue}}`…), `status` (`draft → underReview →` `needsRetake` / `failed` / `expired` / `approved`), `submittedAt`, `welcomed`, `createdAt` ("Rider since"); backend: `hubLabel`, `firstShift`, `spot {name, distanceKm, assignedAt}`, `onHold` | the rider (draft, submit, welcomed); the backend reviews |
-| `riders/{uid}/shifts/{yyyy-MM-dd}` | `start`, `end`, `hub {id, name, area, lat, lng, managerPhone}`, `spot {name, lat, lng}`, `scooter {plate, batteryPercent}`, `stock {items, portions, scanned, list [{id, name, imageUrl, quantity}], lots {lotId: {itemId, expiresAt, temperatureC, maxTemperatureC}}}`, `hubDistanceKm`, `stockRequest` (`notRequested`, `awaitingReply`, `notWorkingToday`, `requested`, `packing`, `ready`), `stockReadyAt`, `phase` (`notStarted → checklist → headingToHub → atHub → scanning → stockLoaded → headingToSpot → online → ended`) | backend creates it and moves the hub's side (`awaitingReply`, `packing`, `stockReadyAt`, `ready`); the rider replies (`requested` / `notWorkingToday`), moves `phase` and records `stock.scanned` |
-| `riders/{uid}/shifts/{yyyy-MM-dd}` (online fields) | `onlineAt` (first time online, server time), `end` (Add time, up to 4 h later each time), `activeOrderId` (Start order, deleted on Back to your spot); backend: `quietSpell`, `today {orders, earned}`, `stock.sold`, `scooter.batteryPercent`, `queue [{id, number, gate, items, collectCash, assignedAt}]` | the rider writes the first three; backend the rest. **The updated `firestore.rules` are not deployed yet** |
-| `riders/{uid}/shifts/{yyyy-MM-dd}/scans/{code}` | `code`, `itemId`, `lotId`, `method` (`qr`, `manual`), `scannedAt`, `syncedAt` | the rider, when there's signal |
-| `riders/{uid}/notifications/{id}` | `title`, `body`, `at` (Profile 05) | backend only; **not written yet** |
-| `riders/{uid}/shifts/{yyyy-MM-dd}/quarantine/{lotId}` | `lotId`, `itemId`, `requestedAt` | the rider ("Move to quarantine"); the backend handles the rest |
-| `riderPhones/{+91…}` | `uid`, `onHold`, `hubLabel`, `shiftStart` (read before sign-in) | the rider lists their verified number; backend the rest |
-| `areas/{id}` | `name`, `city`, `lat`, `lng`, `popular` | backend |
-| `orders/{id}` (order flow) | `orderNumber`, `riderId`, `gate {name, landmark, lat, lng}`, `items [{name, qty}]`, `payment` (`upi`, `cash`), `amount`, `customerPhone` (masked), `assignedAt`, `status` (`assigned → onTheWay → atGate → delivered`; `skipped`, `cancelled`); rider: `navigatingAt`, `reachedGateAt`, `gateMethod`, `gateProof`, `gateConfirmedAt`, `skipReason`, `skippedAt`, `riderLocation`, `customerWaitingAt`, `handoverMethod` (`code`, `cash`, `details`, `offline`), `deliveryCode`, `handedOver [{name, qty}]`, `deliveredAt`, `offlineProof`, `handoverCode`, `handedOverAt`; backend also `riderFee`, `tripMeters` | backend creates it and cancels; the assigned rider moves it forward. **The updated `firestore.rules` are not deployed yet** |
-| `orders/{id}/private/gate` | `qr` (`NZG\|<gate id>`), `code` (4 digits): the gate's proofs | backend only; the rules check the rider's `gateProof` against it |
-| `orders/{id}` (offers, on hold) | restaurant, customer, items, total, payment mode, rider fee, status, rider info and location, timestamps | backend creates it; the assigned rider moves it forward |
-| `orders/{id}/private/code` | customer's 4-digit delivery code | backend only; riders can't read it, the rules check `deliveryCode` against it |
-| `problemReports/{id}` | `riderId`, `orderId` (none when sent from the Help centre with no order under way), `kind` (`breakdown`, `accident`, `gateClosed`, `customerAbsent`, `unsafeRoute`), `createdAt` | the rider creates it; backend answers. **Not deployed yet either** |
-| On the phone: `saved_handovers/{uid}` (SharedPreferences) | handovers saved without signal, last sync | the app |
-| Storage `kyc/{uid}/{document}_{side}.jpg` | document photos (images under 5 MB) | the rider |
-
-Order status of the offers (on hold): `ready → accepted → pickedUp → delivered` (or `cancelled` by the backend). `firestore.rules` checks every step: only an approved rider can accept, `pickedUpAt` and `deliveredAt` must be the server time, and delivery needs the correct code.
-
-To create an order (backend or console), write `orders/{id}` with `status: "ready"`, `riderId: null`, `riderClosed: false`, `orderNumber`, `restaurant` and `customer` (`name`, `phone`, `address`, `location` GeoPoint), `items` (`name`, `qty`), `total`, `paymentMode` (`cash` or `prepaid`), `riderFee`, `createdAt`, plus `orders/{id}/private/code` with `code`.
-
-Deploy rules and indexes:
-
-```
-firebase deploy --only firestore,storage
-```
-
-### Approving a rider (admin)
-
-In the Firebase console, open **Firestore → riders → {uid}**. Check the photos under `documents`, then either set `status` to `approved` with `hubLabel`, `firstShift` and `spot` (and `hubLabel` / `shiftStart` on `riderPhones/{phone}`), or set an `issue` (`retake`, `nameMismatch`, `expired`) on the documents concerned and `status` to `needsRetake`, `failed` or `expired`. The rider's app updates straight away.
+Everything goes through the Ninzo rider API (see Rider API below); the phone keeps only what the API has no field for (the day's choices, saved handovers and scans without signal, registration details). Firebase is used for one thing: Cloud Messaging gives the push token that `POST /riders/me/devices` registers. Riders are added and approved by the operations team on the backend.
 
 ## Before release
 
 - The backend must give each hub a `managerPhone` for "Call hub manager" (the demo's number is a placeholder).
-- **Authentication → Sign-in method → Phone**: enable it. For testing, add test numbers with fixed codes.
-- **Authentication → Sign-in method → Anonymous**: enable it (Register signs new riders in this way).
-- **Storage → Get started**: needed for KYC uploads (Blaze plan).
-- **Android release builds**: add the release keystore's SHA-1 and SHA-256 in the Firebase project settings.
+- **Push**: the backend sends shift pushes through FCM to the token the app registers.
 
 ## Run and test
 
 ```
-flutter run
+flutter run                         # the Ninzo rider API (the default)
+flutter run --dart-define=DEMO=true # demo: sample data, no backend
 flutter test
 ```
 
+`flutter build apk` builds for the rider API too. Unit tests keep the flow their fakes are written for. The integration tests in `integration_test/` do the same only when told: run them with `--dart-define=RIDER_API=false`, e.g. `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/figma/home_test.dart --dart-define=RIDER_API=false`.
+
+### Rider API
+
+Every endpoint is in `lib/core/api/api_endpoints.dart`, every call in `lib/data/datasources/remote/rider_api.dart` (the client adds tokens, refresh and Idempotency-Key). The base URL is `STAGING_API_URL` in `.env`. A plain `flutter run` follows the backend flow: sign-in, shift at the node, stock lots, offers (accept/decline), pack before the ride, OTP handover, problems, earnings, restock and relocation all go through the API, with an offline event queue. Every endpoint is used: the live stream brings changes at once (offers via `GET /riders/me/offers`), the phone registers for push after sign-in and is removed on sign-out, the API route is the fallback when Google can't be reached, "Request hub to prepare" sends `POST /restock`, and a failed or expired verification starts again with `POST /riders/me/verification/start`. Profile, My shifts, Documents and Notifications come from the API too. Contract: https://mock-server-production-6a71.up.railway.app/contracts/rider.openapi.yaml.
+
+### Google Maps key
+
+Add `MAPS_API_KEY=your-key` to `.env` at the project root, which git ignores. Without it the map is blank. On iOS, set `GMSApiKey` in `ios/Runner/Info.plist`.
+
 ### Demo mode
+
+The demo uses the phone's GPS and Google Routes, so the rider has to reach the hub, spot and gate. `--dart-define=DEMO_SIM_RIDER=true` brings back the rider who moves alone on sample turns, which the tables below describe. `--dart-define=DEMO_REVA=true` adds a first order at Reva Circle.
 
 `flutter run --dart-define=DEMO=true` runs without a backend (code `123456` for any number).
 
@@ -122,7 +119,7 @@ Register (Figma Section 3): tap **New rider? Register** and use one of these num
 | 90000 00003 | licence expired (13) → Update driving licence → resubmit → approved |
 | any other (e.g. 98765 43210) | "This number is already registered" (03) |
 
-Search **Yel** for results (15), anything else unknown (e.g. **Xyz**) for no results (16). "Use my current location" picks the nearest area within 25 km (in demo mode, the nearest sample area wherever the phone is).
+Typing in the area search asks Google Places (New) for real places, in demo mode too; picking one fetches its coordinates. "Use my current location" asks Google Geocoding for the area at the phone's position. With nothing typed the list shows the popular areas.
 
 Today's shift (Figma Sections 4–7). Sign in with any registered number (e.g. 98765 43210, code 123456). The demo shift starts **3 minutes after the app opens** at Hub 2, Yelahanka Node, scooter KA 01 AB 1234, and the day runs on short timers:
 

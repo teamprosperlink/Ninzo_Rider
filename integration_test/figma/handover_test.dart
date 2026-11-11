@@ -5,14 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:ninzo_rider/features/orders/presentation/viewmodels/handover_view_model.dart';
+import 'package:ninzo_rider/presentation/orders/viewmodels/handover_view_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ninzo_rider/features/intro/domain/entities/app_permission.dart';
-import 'package:ninzo_rider/features/online/domain/entities/online_status.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/delivery_order.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/handover.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
+import 'package:ninzo_rider/domain/entities/app_permission.dart';
+import 'package:ninzo_rider/domain/entities/online_status.dart';
+import 'package:ninzo_rider/domain/entities/delivery_order.dart';
+import 'package:ninzo_rider/domain/entities/handover.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
 
 import '../../test/fakes.dart';
 

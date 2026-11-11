@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
 import 'rider_inputs.dart';
 import 'rider_status.dart';
 import 'rider_text.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_sizes.dart';
+import '../../constants/app_numbers.dart';
 
 /// 32px rounded tile (brand 10%) with a 16px icon: leading of form fields
 /// and place rows in the register designs.
@@ -13,9 +16,9 @@ class RiderSmallIconTile extends StatelessWidget {
     this.icon, {
     super.key,
     this.color = RiderColors.brand,
-    this.size = 32,
-    this.radius = 12,
-    this.alpha = 0.1,
+    this.size = AppSizes.s32,
+    this.radius = AppSizes.s12,
+    this.alpha = AppOpacity.o0_1,
   });
 
   /// Of [color] on the tile.
@@ -91,7 +94,7 @@ class RiderIconField extends StatelessWidget {
       RiderFieldTone.error => RiderColors.error,
       RiderFieldTone.warning => RiderColors.warning,
     };
-    final textStyle = RiderText.bodyLarge.copyWith(height: 20 / 16);
+    final textStyle = RiderText.bodyLargeTight;
     final hintStyle = textStyle.copyWith(color: RiderColors.grey);
     final Widget text = controller != null
         ? TextField(
@@ -107,8 +110,8 @@ class RiderIconField extends StatelessWidget {
             onSubmitted: onSubmitted,
             style: textStyle,
             cursorColor: RiderColors.brand,
-            cursorWidth: 2,
-            cursorHeight: 22,
+            cursorWidth: AppSizes.s2,
+            cursorHeight: AppSizes.s22,
             decoration: InputDecoration(
               isCollapsed: true,
               filled: false,
@@ -124,23 +127,23 @@ class RiderIconField extends StatelessWidget {
             value ?? hint ?? '',
             key: fieldKey,
             style: value == null ? hintStyle : textStyle,
-            maxLines: 1,
+            maxLines: AppLimits.oneLine,
             overflow: TextOverflow.ellipsis,
           );
     final field = Container(
-      height: 56,
-      padding: const EdgeInsets.only(left: 12, right: 16),
+      height: AppSizes.s56,
+      padding: const EdgeInsets.only(left: AppSizes.s12, right: AppSizes.s16),
       decoration: BoxDecoration(
         color: borderColor == null ? RiderColors.inkFaint : RiderColors.white,
         borderRadius: BorderRadius.circular(RiderRadius.field),
         border: borderColor == null
             ? null
-            : Border.all(color: borderColor, width: 1.5),
+            : Border.all(color: borderColor, width: AppSizes.s1_5),
       ),
       child: Row(
         children: [
           RiderSmallIconTile(icon),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSizes.s12),
           Expanded(child: text),
         ],
       ),
@@ -177,9 +180,9 @@ class RiderLabeledField extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Text(label, style: RiderText.labelLarge),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSizes.s8),
       child,
-      if (message != null) ...[const SizedBox(height: 8), message!],
+      if (message != null) ...[const SizedBox(height: AppSizes.s8), message!],
     ],
   );
 }
@@ -209,8 +212,8 @@ class RiderStepProgress extends StatelessWidget {
         inactive: RiderColors.track,
         padding: EdgeInsets.zero,
       ),
-      const SizedBox(height: 8),
-      Text('Step $step of $total · $label', style: RiderText.caption),
+      const SizedBox(height: AppSizes.s8),
+      Text(AppStrings.stepOf(step, total, label), style: RiderText.caption),
     ],
   );
 }
@@ -239,14 +242,14 @@ class RiderPlaceRow extends StatelessWidget {
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
     child: Container(
-      height: 64,
+      height: AppSizes.s64,
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: RiderColors.divider)),
       ),
       child: Row(
         children: [
-          RiderSmallIconTile(icon, alpha: 0.105),
-          const SizedBox(width: 12),
+          RiderSmallIconTile(icon, alpha: AppOpacity.o0_105),
+          const SizedBox(width: AppSizes.s12),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -255,17 +258,17 @@ class RiderPlaceRow extends StatelessWidget {
                 Text(
                   title,
                   style: RiderText.bodyLarge.copyWith(
-                    height: 20 / 16,
+                    height: AppSizes.s20 / AppSizes.s16,
                     color: highlight ? RiderColors.brand : RiderColors.ink,
                   ),
-                  maxLines: 1,
+                  maxLines: AppLimits.oneLine,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSizes.s2),
                 Text(
                   subtitle,
                   style: RiderText.caption,
-                  maxLines: 1,
+                  maxLines: AppLimits.oneLine,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -286,7 +289,7 @@ class RiderInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s4),
     decoration: BoxDecoration(
       color: RiderColors.white,
       borderRadius: BorderRadius.circular(RiderRadius.card),
@@ -297,7 +300,7 @@ class RiderInfoCard extends StatelessWidget {
       children: [
         for (var i = 0; i < children.length; i++) ...[
           if (i > 0)
-            const Divider(height: 1, thickness: 1, color: RiderColors.hairline),
+            const Divider(height: AppSizes.s1, thickness: AppSizes.s1, color: RiderColors.hairline),
           children[i],
         ],
       ],
@@ -322,7 +325,7 @@ class RiderInfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
+    padding: const EdgeInsets.symmetric(vertical: AppSizes.s12),
     child: Row(
       children: [
         Expanded(
@@ -348,7 +351,7 @@ class RiderTip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
+    padding: const EdgeInsets.fromLTRB(AppSizes.s12, AppSizes.s12, AppSizes.s16, AppSizes.s12),
     decoration: BoxDecoration(
       color: RiderColors.tipFill,
       borderRadius: BorderRadius.circular(RiderRadius.field),
@@ -357,15 +360,15 @@ class RiderTip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 28,
-          height: 28,
+          width: AppSizes.s28,
+          height: AppSizes.s28,
           decoration: BoxDecoration(
             color: RiderColors.tipTile,
             borderRadius: BorderRadius.circular(RiderRadius.s),
           ),
-          child: Icon(icon, size: 16, color: RiderColors.brand),
+          child: Icon(icon, size: AppSizes.s16, color: RiderColors.brand),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSizes.s12),
         Expanded(
           child: Text(
             message,
@@ -384,8 +387,8 @@ class RiderViewfinder extends StatelessWidget {
   const RiderViewfinder({
     super.key,
     this.caption,
-    this.radius = 24,
-    this.cornerStroke = 3,
+    this.radius = AppSizes.s24,
+    this.cornerStroke = AppSizes.s3,
     this.preview,
     this.onTap,
   });
@@ -398,7 +401,7 @@ class RiderViewfinder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 300,
+    height: AppSizes.s300,
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
       color: RiderColors.viewfinder,
@@ -415,17 +418,17 @@ class RiderViewfinder extends StatelessWidget {
           alignment: Alignment.center,
           child: IgnorePointer(
             child: SizedBox(
-              width: 130,
-              height: 130,
+              width: AppSizes.s130,
+              height: AppSizes.s130,
               child: CustomPaint(painter: _CornersPainter(cornerStroke)),
             ),
           ),
         ),
         if (caption != null)
           Positioned(
-            left: 0,
-            right: 0,
-            top: 256,
+            left: AppSizes.s0,
+            right: AppSizes.s0,
+            top: AppSizes.s256,
             child: IgnorePointer(
               child: Text(
                 caption!,
@@ -452,9 +455,9 @@ class RiderGateViewfinder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 360,
+    height: AppSizes.s360,
     clipBehavior: Clip.antiAlias,
-    decoration: BoxDecoration(color: RiderColors.ink, borderRadius: BorderRadius.circular(24)),
+    decoration: BoxDecoration(color: RiderColors.ink, borderRadius: BorderRadius.circular(AppSizes.s24)),
     child: Stack(
       children: [
         if (preview != null) Positioned.fill(child: preview!),
@@ -463,22 +466,22 @@ class RiderGateViewfinder extends StatelessWidget {
             child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap),
           ),
         Positioned(
-          left: 64,
-          top: 60,
+          left: AppSizes.s64,
+          top: AppSizes.s60,
           child: IgnorePointer(
             child: Container(
-              width: 200,
-              height: 200,
+              width: AppSizes.s200,
+              height: AppSizes.s200,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: RiderColors.white, width: 3),
+                borderRadius: BorderRadius.circular(AppSizes.s24),
+                border: Border.all(color: RiderColors.white, width: AppSizes.s3),
               ),
             ),
           ),
         ),
         Positioned(
-          left: 64,
-          top: 290,
+          left: AppSizes.s64,
+          top: AppSizes.s290,
           child: IgnorePointer(
             child: Text(caption, style: RiderText.labelLarge.copyWith(color: RiderColors.white)),
           ),
@@ -495,7 +498,7 @@ class _CornersPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const arm = 28.0;
+    const arm = AppSizes.s28_0;
     final paint = Paint()
       ..color = RiderColors.white
       ..strokeWidth = stroke
@@ -503,14 +506,14 @@ class _CornersPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     final w = size.width, h = size.height;
     final path = Path()
-      ..moveTo(0, arm)
-      ..lineTo(0, 0)
-      ..lineTo(arm, 0)
-      ..moveTo(w - arm, 0)
-      ..lineTo(w, 0)
+      ..moveTo(AppSizes.s0, arm)
+      ..lineTo(AppSizes.s0, AppSizes.s0)
+      ..lineTo(arm, AppSizes.s0)
+      ..moveTo(w - arm, AppSizes.s0)
+      ..lineTo(w, AppSizes.s0)
       ..lineTo(w, arm)
-      ..moveTo(0, h - arm)
-      ..lineTo(0, h)
+      ..moveTo(AppSizes.s0, h - arm)
+      ..lineTo(AppSizes.s0, h)
       ..lineTo(arm, h)
       ..moveTo(w - arm, h)
       ..lineTo(w, h)

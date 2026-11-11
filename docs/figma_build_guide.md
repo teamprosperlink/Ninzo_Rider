@@ -39,7 +39,7 @@ Never call `use_figma`, `generate_figma_design`, `upload_assets`, `add_code_conn
 
 ## Design system: reuse, don't redraw
 
-- Tokens: `lib/core/design/rider_tokens.dart` (`RiderColors`, `RiderText`, `RiderSpace`, `RiderRadius`,
+- Tokens: `lib/core/constants/app_colors.dart` and `lib/core/theme/app_theme.dart` (`RiderColors`, `RiderText`, `RiderSpace`, `RiderRadius`,
   `riderShadow`). Names match the Figma variables (e.g. `Text/Grey` = `RiderColors.grey`,
   `Heading/H4` = `RiderText.h4`). Font: Inter (bundled).
 - Components: `import 'core/widgets/rider/rider_ui.dart'` gives `RiderScaffold`, `RiderHeader`,
@@ -59,15 +59,15 @@ Never call `use_figma`, `generate_figma_design`, `upload_assets`, `add_code_conn
 
 ## Architecture: Clean Architecture + MVVM (keep it)
 
-Per feature in `lib/features/<feature>/`:
-`domain/` (entities, repository interfaces, use cases; pure Dart) → `data/` (models, Firestore
-repositories) → `di/` (providers; the only place that imports `data/`) → `presentation/`
-(`providers/`, `viewmodels/`, `views/`, `widgets/`). Business rules live in use cases; views hold
-no logic. Riverpod 3. Root screen selection lives in `lib/app/`.
+By layer: `lib/domain/{entities,repositories,usecases}` (pure Dart) →
+`lib/data/{models,repositories,datasources/{remote,local}}` → `lib/injection_container.dart` (providers;
+the only place that imports `data/`) → `lib/presentation/<feature>/{views,viewmodels,providers,widgets}`.
+Business rules live in use cases; views hold
+no logic. Riverpod 3. Every enum-to-screen link lives in `lib/routing/app_router.dart`.
 
 ## Demo mode
 
-`kDemoMode` (`lib/core/config/app_mode.dart`, `--dart-define=DEMO=true`). Each feature's `di/`
+`kDemoMode` (`lib/core/constants/app_mode.dart`, `--dart-define=DEMO=true`). `lib/injection_container.dart`
 returns an in-memory demo repository in demo mode, seeded with the Figma sample values, so every
 screen is reachable on a phone without a backend. Time-based backend events (hub packing, order
 assignment) are simulated with short delays.

@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ninzo_rider/core/error/app_exception.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
-import 'package:ninzo_rider/features/shift/domain/usecases/shift_flow_usecases.dart';
-import 'package:ninzo_rider/features/stock/data/repositories/local_stock_stores.dart';
-import 'package:ninzo_rider/features/stock/domain/entities/scan_outcome.dart';
-import 'package:ninzo_rider/features/stock/domain/entities/stock.dart';
-import 'package:ninzo_rider/features/stock/domain/repositories/stock_repository.dart';
-import 'package:ninzo_rider/features/stock/domain/usecases/stock_usecases.dart';
+import 'package:ninzo_rider/core/errors/app_exception.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
+import 'package:ninzo_rider/domain/usecases/shift_flow_usecases.dart';
+import 'package:ninzo_rider/data/datasources/local/local_stock_stores.dart';
+import 'package:ninzo_rider/domain/entities/scan_outcome.dart';
+import 'package:ninzo_rider/domain/entities/stock.dart';
+import 'package:ninzo_rider/domain/repositories/stock_repository.dart';
+import 'package:ninzo_rider/domain/usecases/stock_usecases.dart';
 
 import 'fakes.dart';
 

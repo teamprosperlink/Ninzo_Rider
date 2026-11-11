@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
 import 'rider_status.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_sizes.dart';
+import 'rider_refill.dart';
+import '../../constants/app_numbers.dart';
 
 /// 176px rounded art tile from the permission and status pages: a tinted
 /// square with two soft circles and a white disc holding an icon.
 /// Stand-in for the illustrations ("Art tile (replace illustration)").
 class RiderArtTile extends StatelessWidget {
+  /// The pause glyph on the break pages.
+  static const pause = RiderArtTile.medium(glyph: RiderPauseGlyph());
+
   const RiderArtTile({super.key, required this.icon, this.tone = RiderColors.brand, this.iconColor, this.innerColor})
-    : size = 176,
-      discSize = 96,
-      innerSize = 60,
-      iconSize = 32,
-      radius = 48,
+    : size = AppSizes.s176,
+      discSize = AppSizes.s96,
+      innerSize = AppSizes.s60,
+      iconSize = AppSizes.s32,
+      radius = AppSizes.s48,
       glyph = null,
       decor = _largeDecor;
 
@@ -24,11 +31,11 @@ class RiderArtTile extends StatelessWidget {
     this.tone = RiderColors.brand,
     this.iconColor,
     this.innerColor,
-  }) : size = 132,
-       discSize = 76,
-       innerSize = 46,
-       iconSize = 24,
-       radius = 36,
+  }) : size = AppSizes.s132,
+       discSize = AppSizes.s76,
+       innerSize = AppSizes.s46,
+       iconSize = AppSizes.s24,
+       radius = AppSizes.s36,
        glyph = null,
        decor = _largeDecor;
 
@@ -40,15 +47,15 @@ class RiderArtTile extends StatelessWidget {
     this.tone = RiderColors.brand,
     this.iconColor,
     this.glyph,
-  }) : size = 128,
-       discSize = 72,
-       innerSize = 0,
+  }) : size = AppSizes.s128,
+       discSize = AppSizes.s72,
+       innerSize = AppSizes.s0,
        innerColor = null,
-       iconSize = 20,
-       radius = 36,
-       decor = const [(70, -24, 90), (-14, 86, 60)];
+       iconSize = AppSizes.s20,
+       radius = AppSizes.s36,
+       decor = const [(AppSizes.s70, -AppSizes.s24, AppSizes.s90), (-AppSizes.s14, AppSizes.s86, AppSizes.s60)];
 
-  static const _largeDecor = [(100.0, -30.0, 120.0), (-20.0, 120.0, 80.0)];
+  static const _largeDecor = [(AppSizes.s100_0, -AppSizes.s30_0, AppSizes.s120_0), (-AppSizes.s20_0, AppSizes.s120_0, AppSizes.s80_0)];
 
   final IconData icon;
 
@@ -76,9 +83,9 @@ class RiderArtTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (tile, circle, inner) = switch (tone) {
-      RiderColors.error => (const Color(0xFFF9E8E8), const Color(0xFFF9DBDB), const Color(0xFFFDE8E8)),
-      RiderColors.warning => (const Color(0xFFF9EFDD), const Color(0xFFFAEACD), const Color(0xFFFDF3E1)),
-      _ => (const Color(0xFFE4F2E4), const Color(0xFFD3ECD3), tone.withValues(alpha: 0.1)),
+      RiderColors.error => (RiderColors.errorFill, RiderColors.errorHaloInner, RiderColors.errorHaloCore),
+      RiderColors.warning => (RiderColors.tipFill, RiderColors.warningHaloInner, RiderColors.warningBanner),
+      _ => (RiderColors.optionSelected, RiderColors.brandHaloInner, tone.withValues(alpha: AppOpacity.o0_1)),
     };
     return Container(
       width: size,
@@ -97,17 +104,17 @@ class RiderArtTile extends StatelessWidget {
               color: RiderColors.white,
               shape: BoxShape.circle,
               boxShadow: [
-                innerSize == 0
-                    ? const BoxShadow(color: Color(0x1A009600), offset: Offset(0, 8), blurRadius: 16.5)
-                    : const BoxShadow(color: RiderColors.shadow, offset: Offset(0, 8), blurRadius: 9.5),
+                innerSize == AppSizes.s0
+                    ? RiderLayout.artTileTintShadow
+                    : RiderLayout.artTileShadow,
               ],
             ),
             child:
                 glyph ??
-                (innerSize == 0
+                (innerSize == AppSizes.s0
                     // The design's icon sits a little up and left of the disc's centre.
                     ? Transform.translate(
-                        offset: const Offset(-4, -3.5),
+                        offset: const Offset(-AppSizes.s4, -AppSizes.s3_5),
                         child: Icon(icon, size: iconSize, color: iconColor ?? tone),
                       )
                     : Container(
@@ -140,9 +147,9 @@ class RiderPlusGlyph extends StatelessWidget {
     Widget bar(double w, double h) => Container(
       width: w,
       height: h,
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4.5)),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppSizes.s4_5)),
     );
-    return Stack(alignment: Alignment.center, children: [bar(28, 9), bar(9, 28)]);
+    return Stack(alignment: Alignment.center, children: [bar(AppSizes.s28, AppSizes.s9), bar(AppSizes.s9, AppSizes.s28)]);
   }
 }
 
@@ -154,51 +161,51 @@ class RiderLogoMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget speedLine(double top, double width) => Positioned(
-      left: 12.67,
-      top: top - 0.17,
+      left: AppSizes.s12_67,
+      top: top - AppSizes.s0_17,
       child: Container(
         width: width,
-        height: 3.5,
+        height: AppSizes.s3_5,
         decoration: BoxDecoration(color: RiderColors.white, borderRadius: BorderRadius.circular(RiderRadius.pill)),
       ),
     );
     return Container(
-      width: 104,
-      height: 104,
+      width: AppSizes.s104,
+      height: AppSizes.s104,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: RiderColors.white.withValues(alpha: 0.35), width: 1.5),
+        borderRadius: BorderRadius.circular(AppSizes.s32),
+        border: Border.all(color: RiderColors.white.withValues(alpha: AppOpacity.o0_35), width: AppSizes.s1_5),
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF33D138), Color(0xFF00800D)],
+          colors: [RiderColors.heroGradientStart, RiderColors.heroGradientEnd],
         ),
-        boxShadow: const [BoxShadow(color: Color(0x66009600), offset: Offset(0, 18), blurRadius: 30.3)],
+        boxShadow: RiderLayout.brand40Shadow18x30_3,
       ),
       child: Stack(
         children: [
           Positioned(
-            left: -27,
-            top: -51,
+            left: -AppSizes.s27,
+            top: -AppSizes.s51,
             child: Container(
-              width: 150,
-              height: 80,
+              width: AppSizes.s150,
+              height: AppSizes.s80,
               decoration: BoxDecoration(
-                color: RiderColors.white.withValues(alpha: 0.12),
-                borderRadius: const BorderRadius.all(Radius.elliptical(75, 40)),
+                color: RiderColors.white.withValues(alpha: AppOpacity.o0_12),
+                borderRadius: const BorderRadius.all(Radius.elliptical(AppSizes.s75, AppSizes.s40)),
               ),
             ),
           ),
-          speedLine(38.5, 16),
-          speedLine(48.5, 24),
-          speedLine(58.5, 14),
+          speedLine(AppSizes.s38_5, AppSizes.s16),
+          speedLine(AppSizes.s48_5, AppSizes.s24),
+          speedLine(AppSizes.s58_5, AppSizes.s14),
           Positioned(
-            left: 43,
-            top: 14,
+            left: AppSizes.s43,
+            top: AppSizes.s14,
             child: Text(
-              'N',
-              style: RiderText.displayXl.copyWith(color: RiderColors.white, fontSize: 60, height: 68 / 60),
+              AppStrings.textN,
+              style: RiderText.heroNumber,
             ),
           ),
         ],
@@ -214,36 +221,36 @@ class RiderTickTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 40,
-      height: 40,
+      width: AppSizes.s40,
+      height: AppSizes.s40,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(RiderRadius.field),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFEDFCED), Color(0xFFCCF0D1)],
+          colors: [RiderColors.tileGradientStart, RiderColors.tileGradientEnd],
         ),
         border: const Border(
-          top: BorderSide(color: Color(0x24009600)),
-          left: BorderSide(color: Color(0x24009600)),
-          right: BorderSide(color: Color(0x24009600)),
-          bottom: BorderSide(color: Color(0x24009600), width: 2),
+          top: BorderSide(color: RiderColors.brand14),
+          left: BorderSide(color: RiderColors.brand14),
+          right: BorderSide(color: RiderColors.brand14),
+          bottom: BorderSide(color: RiderColors.brand14, width: AppSizes.s2),
         ),
       ),
       child: Container(
-        width: 24,
-        height: 24,
+        width: AppSizes.s24,
+        height: AppSizes.s24,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
-            begin: Alignment(-1.08, -1.08),
-            end: Alignment(0.68, 0.68),
-            colors: [Color(0xFF38CC3D), Color(0xFF00800F)],
+            begin: Alignment(-AppSizes.s1_08, -AppSizes.s1_08),
+            end: Alignment(AppSizes.s0_68, AppSizes.s0_68),
+            colors: [RiderColors.badgeGradientStart, RiderColors.badgeGradientEnd],
           ),
-          boxShadow: [BoxShadow(color: Color(0x4D009600), offset: Offset(0, 3), blurRadius: 4.33)],
+          boxShadow: RiderLayout.brand30Shadow3x4_33,
         ),
-        child: const Icon(Icons.check, size: 16, color: RiderColors.white),
+        child: const Icon(Icons.check, size: AppSizes.s16, color: RiderColors.white),
       ),
     );
   }
@@ -258,7 +265,7 @@ class RiderTickCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s4),
       decoration: BoxDecoration(
         color: RiderColors.white,
         borderRadius: BorderRadius.circular(RiderRadius.card),
@@ -267,13 +274,13 @@ class RiderTickCard extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++) ...[
-            if (i > 0) const Divider(height: 1, thickness: 1, color: RiderColors.hairline),
+            if (i > 0) const Divider(height: AppSizes.s1, thickness: AppSizes.s1, color: RiderColors.hairline),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.s12),
               child: Row(
                 children: [
                   const RiderTickTile(),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSizes.s12),
                   Expanded(child: Text(items[i], style: RiderText.bodyMedium)),
                 ],
               ),
@@ -301,9 +308,9 @@ class RiderArtPage extends StatelessWidget {
     this.benefits = const [],
     this.actions = const [],
     this.content,
-    this.padding = const EdgeInsets.fromLTRB(16, 24, 16, 16),
-    this.gap = 20,
-    this.actionsPadding = const EdgeInsets.fromLTRB(16, 8, 16, 8),
+    this.padding = const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s24, AppSizes.s16, AppSizes.s16),
+    this.gap = AppSizes.s20,
+    this.actionsPadding = const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s8, AppSizes.s16, AppSizes.s8),
   });
 
   /// The register status pages (Register 08–13): the small art tile right
@@ -320,9 +327,9 @@ class RiderArtPage extends StatelessWidget {
   }) : steps = null,
        titleStyle = null,
        benefits = const [],
-       padding = const EdgeInsets.fromLTRB(16, 0, 16, 16),
-       gap = 16,
-       actionsPadding = const EdgeInsets.fromLTRB(16, 8, 16, 12);
+       padding = const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s0, AppSizes.s16, AppSizes.s16),
+       gap = AppSizes.s16,
+       actionsPadding = const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s8, AppSizes.s16, AppSizes.s12);
 
   /// (done, total) for the segmented bars at the top, e.g. (1, 3).
   final (int, int)? steps;
@@ -373,16 +380,16 @@ class RiderArtPage extends StatelessWidget {
                       SizedBox(height: gap),
                       // Flutter centres the spacing after the last letter too; Figma doesn't.
                       Padding(
-                        padding: const EdgeInsets.only(left: 1.2),
+                        padding: const EdgeInsets.only(left: AppSizes.s1_2),
                         child: Text(
                           overline.toUpperCase(),
                           textAlign: TextAlign.center,
-                          style: RiderText.overline.copyWith(color: overlineColor, letterSpacing: 1.2),
+                          style: RiderText.overlineSpaced1_2.copyWith(color: overlineColor),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSizes.s8),
                       Text(title, textAlign: TextAlign.center, style: titleStyle ?? RiderText.h4),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSizes.s8),
                       Text(
                         body,
                         textAlign: TextAlign.center,
@@ -401,7 +408,7 @@ class RiderArtPage extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (var i = 0; i < actions.length; i++) ...[if (i > 0) const SizedBox(height: 8), actions[i]],
+                      for (var i = 0; i < actions.length; i++) ...[if (i > 0) const SizedBox(height: AppSizes.s8), actions[i]],
                     ],
                   ),
                 ),

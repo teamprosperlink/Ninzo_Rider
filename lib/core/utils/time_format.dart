@@ -2,16 +2,18 @@
 /// screens.
 library;
 
+import '../constants/app_strings.dart';
+
 const _months = [
-  'January', 'February', 'March', 'April', 'May', 'June', //
-  'July', 'August', 'September', 'October', 'November', 'December',
+  AppStrings.january, AppStrings.february, AppStrings.march, AppStrings.april, AppStrings.may, AppStrings.june, //
+  AppStrings.july, AppStrings.august, AppStrings.september, AppStrings.october, AppStrings.november, AppStrings.december,
 ];
-const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const _weekdays = [AppStrings.monday, AppStrings.tuesday, AppStrings.wednesday, AppStrings.thursday, AppStrings.friday, AppStrings.saturday, AppStrings.sunday];
 
 /// "9:00 AM", "12:30 PM".
 String clockTime(DateTime t) {
   final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
-  return '$h:${t.minute.toString().padLeft(2, '0')} ${t.hour < 12 ? 'AM' : 'PM'}';
+  return AppStrings.clockWithPeriod(h, t.minute.toString().padLeft(2, '0'), t.hour < 12 ? AppStrings.textAm : AppStrings.textPm);
 }
 
 /// "2:14 pm" (Stock 07, 13).
@@ -24,7 +26,7 @@ String shortClock(DateTime t) {
 }
 
 /// "7h 52m" (Shift 46, 48, 50).
-String hoursAndMinutes(Duration d) => '${d.inHours}h ${(d.inMinutes % 60).toString().padLeft(2, '0')}m';
+String hoursAndMinutes(Duration d) => AppStrings.textHM(d.inHours, (d.inMinutes % 60).toString().padLeft(2, '0'));
 
 /// A time span as hours and minutes: "0:12" (the Online stat).
 String hoursMinutes(Duration d) => '${d.inHours}:${(d.inMinutes % 60).toString().padLeft(2, '0')}';
@@ -43,7 +45,7 @@ String monthYear(DateTime t) => '${_months[t.month - 1].substring(0, 3)} ${t.yea
 
 /// "Good morning" before noon, "Good afternoon" until 5 PM, then "Good evening".
 String greeting(DateTime t) => t.hour < 12
-    ? 'Good morning'
+    ? AppStrings.goodMorning
     : t.hour < 17
-    ? 'Good afternoon'
-    : 'Good evening';
+    ? AppStrings.goodAfternoon
+    : AppStrings.goodEvening;

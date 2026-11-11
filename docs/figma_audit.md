@@ -1,12 +1,14 @@
 # Figma audit: fix queue
 
+**Status, 2026-11-06 (168 screens; the 5 Nov baseline is the reference, by the user's decision):** median 0.73% over 32 levels, 125 screens under 1%, 141 non-map screens under 2%. Figma's hug width is ceil(width - letterSpacing), and it puts no spacing before the first letter: `RiderHugText` does both. Still off: Material icons (Order 04, Stock 06, Refill 04, Handover 06, 11), Restock 02 stepper under 1px, Login 05-07 sample timer, Shift 44 bar (Figma draws about 42% at 29:12 of 30:00; the app shows the real 2.7%), spinner phase, text anti-aliasing and map tiles. Shift 25 and Shift 52 captures can race: the 5 s hold can end before the screenshot, and tiles may not have loaded.
+
 **Status, 2026-11-05, fix pass 2 (121 built screens):** median pixel diff 0.43% (was 2.05%); 96 screens under 1%; 99.97% of flat pixels match the Figma render exactly; no strip shift on non-map screens; all 8 device suites and 131 unit tests pass.
 
 Root causes fixed in this pass:
 - Figma renders Inter 3.19. `assets/fonts` now holds 3.19, in place of 4.001. Letter-spacing overrides are gone; every text uses its token value.
 - Figma sizes hugging text in whole pixels: `RiderHugText` (labels, pills, buttons, 20-radius card values).
 - Flutter centres the spacing after the last letter: centred overlines get a left inset equal to their letter spacing.
-- Flutter paints a blur number wider than Figma: see the note in `rider_tokens.dart`. Flutter paints a BoxShadow under translucent fills, so use opaque fills there.
+- Flutter paints a blur number wider than Figma: see the note in `app_theme.dart`. Flutter paints a BoxShadow under translucent fills, so use opaque fills there.
 - Chip and panel borders: see `RiderPhoneField`, `RiderPanel`.
 
 Still different, and why:

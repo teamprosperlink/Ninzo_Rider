@@ -6,11 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ninzo_rider/features/intro/domain/entities/app_permission.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
-import 'package:ninzo_rider/features/stock/data/repositories/local_stock_stores.dart';
-import 'package:ninzo_rider/features/stock/domain/entities/stock.dart';
+import 'package:ninzo_rider/domain/entities/app_permission.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
+import 'package:ninzo_rider/data/datasources/local/local_stock_stores.dart';
+import 'package:ninzo_rider/domain/entities/stock.dart';
 
 import '../../test/fakes.dart';
 

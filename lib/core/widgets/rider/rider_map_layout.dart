@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
+import '../../constants/app_sizes.dart';
+import '../../constants/app_numbers.dart';
 
 /// Map screens from the design: a map filling the top, overlays on it, and a
 /// white bottom sheet (32 radius, grey handle) holding the content.
@@ -30,7 +32,7 @@ class RiderMapLayout extends StatelessWidget {
   }) : map = null;
 
   /// How far the map runs under the sheet.
-  static const underSheetOverlap = 36.0;
+  static const underSheetOverlap = AppSizes.s36_0;
 
   /// Usually a [MapView]; the design's grey blocks are a map placeholder.
   final Widget? map;
@@ -59,24 +61,31 @@ class RiderMapLayout extends StatelessWidget {
                   children: [
                     if (mapBuilder != null)
                       Positioned(
-                        left: 0,
-                        right: 0,
-                        top: 0,
+                        left: AppSizes.s0,
+                        right: AppSizes.s0,
+                        top: AppSizes.s0,
                         bottom: -underSheetOverlap,
                         child: mapBuilder!(constraints.maxHeight + underSheetOverlap),
                       )
                     else
-                      Positioned.fill(child: map!),
+                      // Under the sheet too, so its rounded top corners show the map.
+                      Positioned(
+                        left: AppSizes.s0,
+                        right: AppSizes.s0,
+                        top: AppSizes.s0,
+                        bottom: -underSheetOverlap,
+                        child: map!,
+                      ),
                     if (overlays.isNotEmpty)
                       SafeArea(
                         bottom: false,
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s8, AppSizes.s16, AppSizes.s0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               for (var i = 0; i < overlays.length; i++) ...[
-                                if (i > 0) const SizedBox(height: 8),
+                                if (i > 0) const SizedBox(height: AppSizes.s8),
                                 overlays[i],
                               ],
                             ],
@@ -98,7 +107,7 @@ class RiderMapLayout extends StatelessWidget {
 
 /// The white rounded sheet with a handle; also used for modal sheets.
 class RiderSheet extends StatelessWidget {
-  const RiderSheet({super.key, required this.children, this.gap = 16, this.bottomGap = 12, this.minHeight = 0});
+  const RiderSheet({super.key, required this.children, this.gap = AppSizes.s16, this.bottomGap = AppSizes.s12, this.minHeight = 0});
 
   final List<Widget> children;
   final double gap;
@@ -120,7 +129,7 @@ class RiderSheet extends StatelessWidget {
         ),
         boxShadow: riderShadow,
       ),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s8, AppSizes.s16, AppSizes.s0),
       // 28px below the content in the 800px frame: 12 above the gesture
       // area, which the system inset covers.
       child: Padding(
@@ -133,9 +142,9 @@ class RiderSheet extends StatelessWidget {
           children: [
             Center(
               child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 4),
+                width: AppSizes.s36,
+                height: AppSizes.s4,
+                margin: const EdgeInsets.symmetric(vertical: AppSizes.s4),
                 decoration: BoxDecoration(
                   color: RiderColors.divider,
                   borderRadius: BorderRadius.circular(RiderRadius.pill),
@@ -153,7 +162,7 @@ class RiderSheet extends StatelessWidget {
 /// The sheet of Shift 28: a fixed-height scrolling area and a fixed bar below
 /// it holding the action.
 class RiderScrollSheet extends StatelessWidget {
-  const RiderScrollSheet({super.key, required this.children, required this.bottom, this.scrollHeight = 356});
+  const RiderScrollSheet({super.key, required this.children, required this.bottom, this.scrollHeight = AppSizes.s356});
 
   final List<Widget> children;
   final Widget bottom;
@@ -166,36 +175,36 @@ class RiderScrollSheet extends StatelessWidget {
       borderRadius: BorderRadius.vertical(top: Radius.circular(RiderRadius.sheet)),
       boxShadow: riderShadow,
     ),
-    padding: const EdgeInsets.only(top: 8),
+    padding: const EdgeInsets.only(top: AppSizes.s8),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Center(
           child: Container(
-            width: 36,
-            height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 4),
+            width: AppSizes.s36,
+            height: AppSizes.s4,
+            margin: const EdgeInsets.symmetric(vertical: AppSizes.s4),
             decoration: BoxDecoration(color: RiderColors.divider, borderRadius: BorderRadius.circular(RiderRadius.pill)),
           ),
         ),
         SizedBox(
           height: scrollHeight,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s8, AppSizes.s16, AppSizes.s24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (var i = 0; i < children.length; i++) ...[if (i > 0) const SizedBox(height: 16), children[i]],
+                for (var i = 0; i < children.length; i++) ...[if (i > 0) const SizedBox(height: AppSizes.s16), children[i]],
               ],
             ),
           ),
         ),
         Container(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s12, AppSizes.s16, AppSizes.s12 + MediaQuery.paddingOf(context).bottom),
           decoration: const BoxDecoration(
             color: RiderColors.white,
-            boxShadow: [BoxShadow(color: Color(0x0F000000), offset: Offset(0, -4), blurRadius: 9.5)],
+            boxShadow: RiderLayout.sheetTopShadowShadow4x9_5,
           ),
           child: bottom,
         ),
@@ -203,17 +212,6 @@ class RiderScrollSheet extends StatelessWidget {
     ),
   );
 }
-
-/// Opens [children] in a modal [RiderSheet].
-Future<T?> showRiderSheet<T>(
-  BuildContext context, {
-  required List<Widget> Function(BuildContext) builder,
-}) => showModalBottomSheet<T>(
-  context: context,
-  isScrollControlled: true,
-  backgroundColor: Colors.transparent,
-  builder: (context) => RiderSheet(children: builder(context)),
-);
 
 /// White card floating on the map: "In 300 m, turn left".
 class RiderMapCard extends StatelessWidget {
@@ -233,22 +231,16 @@ class RiderMapCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSizes.s12),
       decoration: BoxDecoration(
         color: RiderColors.white,
         borderRadius: BorderRadius.circular(RiderRadius.m),
-        boxShadow: const [
-          BoxShadow(
-            color: RiderColors.shadow,
-            offset: Offset(0, 2),
-            blurRadius: 2.6,
-          ),
-        ],
+        boxShadow: RiderLayout.shadowShadow2x2_6,
       ),
       child: Row(
         children: [
           leading,
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSizes.s12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,7 +248,7 @@ class RiderMapCard extends StatelessWidget {
               children: [
                 Text(title, style: RiderText.labelLarge),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSizes.s2),
                   Text(subtitle!, style: RiderText.caption),
                 ],
               ],
@@ -282,8 +274,8 @@ class RiderMapLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: inverse
-          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-          : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ? const EdgeInsets.symmetric(horizontal: AppSizes.s8, vertical: AppSizes.s4)
+          : const EdgeInsets.symmetric(horizontal: AppSizes.s12, vertical: AppSizes.s8),
       decoration: BoxDecoration(
         color: inverse ? RiderColors.white : RiderColors.ink,
         borderRadius: BorderRadius.circular(RiderRadius.pill),
@@ -302,7 +294,7 @@ class RiderMapLabel extends StatelessWidget {
 /// Destination marker: a 22px green dot with a white ring inside a soft
 /// 64px pulse (hub, spot).
 class RiderMapPlaceDot extends StatelessWidget {
-  const RiderMapPlaceDot({super.key, this.size = 64, this.pulseAlpha = 0.15});
+  const RiderMapPlaceDot({super.key, this.size = AppSizes.s64, this.pulseAlpha = AppOpacity.o0_15});
 
   /// Of the pulse; 60 on the order map.
   final double size;
@@ -315,12 +307,12 @@ class RiderMapPlaceDot extends StatelessWidget {
     alignment: Alignment.center,
     decoration: BoxDecoration(color: RiderColors.brand.withValues(alpha: pulseAlpha), shape: BoxShape.circle),
     child: Container(
-      width: 22,
-      height: 22,
+      width: AppSizes.s22,
+      height: AppSizes.s22,
       decoration: BoxDecoration(
         color: RiderColors.brand,
         shape: BoxShape.circle,
-        border: Border.all(color: RiderColors.white, width: 3),
+        border: Border.all(color: RiderColors.white, width: AppSizes.s3),
       ),
     ),
   );
@@ -330,7 +322,7 @@ class RiderMapPlaceDot extends StatelessWidget {
 class RiderMapYouDot extends StatelessWidget {
   const RiderMapYouDot({super.key});
 
-  static const size = 18.0;
+  static const size = AppSizes.s18_0;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -339,7 +331,7 @@ class RiderMapYouDot extends StatelessWidget {
     decoration: BoxDecoration(
       color: RiderColors.ink,
       shape: BoxShape.circle,
-      border: Border.all(color: RiderColors.white, width: 3),
+      border: Border.all(color: RiderColors.white, width: AppSizes.s3),
     ),
   );
 }
@@ -347,10 +339,10 @@ class RiderMapYouDot extends StatelessWidget {
 /// A named place on the map: its dot in the pulse with the black label above
 /// ("Hub 2", "Yelahanka Node"; centred for "You're here").
 class RiderMapPlaceMarker extends StatelessWidget {
-  const RiderMapPlaceMarker(this.label, {super.key, this.centered = false, this.pulse = 64, this.pulseAlpha = 0.15});
+  const RiderMapPlaceMarker(this.label, {super.key, this.centered = false, this.pulse = AppSizes.s64, this.pulseAlpha = AppOpacity.o0_15});
 
   /// The marker's size; its centre is the place.
-  static const width = 144.0, height = 136.0;
+  static const width = AppSizes.s144_0, height = AppSizes.s136_0;
 
   final String label;
   final bool centered;
@@ -369,9 +361,9 @@ class RiderMapPlaceMarker extends StatelessWidget {
           child: RiderMapPlaceDot(size: pulse, pulseAlpha: pulseAlpha),
         ),
         if (centered)
-          Positioned(left: 0, right: 0, top: 6, child: Center(child: RiderMapLabel(label)))
+          Positioned(left: AppSizes.s0, right: AppSizes.s0, top: AppSizes.s6, child: Center(child: RiderMapLabel(label)))
         else
-          Positioned(left: 10, top: 6, child: RiderMapLabel(label)),
+          Positioned(left: AppSizes.s10, top: AppSizes.s6, child: RiderMapLabel(label)),
       ],
     ),
   );
@@ -379,10 +371,10 @@ class RiderMapPlaceMarker extends StatelessWidget {
 
 /// The rider's dot with a white chip below ("1.2 km", "You").
 class RiderMapYouMarker extends StatelessWidget {
-  const RiderMapYouMarker(this.label, {super.key, this.labelLeft = 33});
+  const RiderMapYouMarker(this.label, {super.key, this.labelLeft = AppSizes.s33});
 
   /// The marker's size; its centre is the rider.
-  static const width = 120.0, height = 80.0;
+  static const width = AppSizes.s120_0, height = AppSizes.s80_0;
 
   final String label;
 
@@ -395,8 +387,8 @@ class RiderMapYouMarker extends StatelessWidget {
     height: height,
     child: Stack(
       children: [
-        const Positioned(left: 51, top: 31, child: RiderMapYouDot()),
-        if (label.isNotEmpty) Positioned(left: labelLeft, top: 54, child: RiderMapLabel(label, inverse: true)),
+        const Positioned(left: AppSizes.s51, top: AppSizes.s31, child: RiderMapYouDot()),
+        if (label.isNotEmpty) Positioned(left: labelLeft, top: AppSizes.s54, child: RiderMapLabel(label, inverse: true)),
       ],
     ),
   );
@@ -408,8 +400,8 @@ class RiderMapRiderPuck extends StatelessWidget {
   const RiderMapRiderPuck(this.label, {super.key});
 
   /// The marker's size; its centre is the rider.
-  static const width = 120.0, height = 110.0;
-  static const _puck = 34.0;
+  static const width = AppSizes.s120_0, height = AppSizes.s110_0;
+  static const _puck = AppSizes.s34_0;
 
   final String label;
 
@@ -429,19 +421,19 @@ class RiderMapRiderPuck extends StatelessWidget {
             decoration: const BoxDecoration(
               color: RiderColors.ink,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: RiderColors.shadow, offset: Offset(0, 2), blurRadius: 2.6)],
+              boxShadow: RiderLayout.shadowShadow2x2_6,
             ),
             child: Container(
-              width: 10,
-              height: 10,
+              width: AppSizes.s10,
+              height: AppSizes.s10,
               decoration: const BoxDecoration(color: RiderColors.white, shape: BoxShape.circle),
             ),
           ),
         ),
         Positioned(
-          left: 0,
-          right: 0,
-          top: (height - _puck) / 2 + 39,
+          left: AppSizes.s0,
+          right: AppSizes.s0,
+          top: (height - _puck) / 2 + AppSizes.s39,
           child: Center(child: RiderMapLabel(label, inverse: true)),
         ),
       ],
@@ -454,7 +446,7 @@ class RiderDeliveryRadius extends StatelessWidget {
   const RiderDeliveryRadius({super.key});
 
   /// Drawn at this size whatever the map's zoom, as designed.
-  static const size = 240.0;
+  static const size = AppSizes.s240_0;
 
   @override
   Widget build(BuildContext context) =>
@@ -467,13 +459,13 @@ class _DashedCirclePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
-    final radius = size.width / 2 - 0.75;
-    canvas.drawCircle(center, size.width / 2, Paint()..color = RiderColors.brand.withValues(alpha: 0.07));
+    final radius = size.width / 2 - AppSizes.s0_75;
+    canvas.drawCircle(center, size.width / 2, Paint()..color = RiderColors.brand.withValues(alpha: AppOpacity.o0_07));
     final dash = Paint()
       ..color = RiderColors.brand
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    const dashLength = 6.0, gapLength = 4.0;
+      ..strokeWidth = AppSizes.s1_5;
+    const dashLength = AppSizes.s6_0, gapLength = AppSizes.s4_0;
     final count = (2 * math.pi * radius / (dashLength + gapLength)).floor();
     final sweep = 2 * math.pi / count;
     final rect = Rect.fromCircle(center: center, radius: radius);
@@ -488,10 +480,10 @@ class _DashedCirclePainter extends CustomPainter {
 
 /// 40px tinted tile with the turn arrow, for a [RiderMapCard].
 class RiderTurnTile extends StatelessWidget {
-  const RiderTurnTile({super.key, this.left = false, this.radius = RiderRadius.m, this.arrowHeight = 18, this.stroke = 2.5});
+  const RiderTurnTile({super.key, this.left = false, this.radius = RiderRadius.m, this.arrowHeight = AppSizes.s18, this.stroke = AppSizes.s2_5});
 
   /// The order map's tile (Order 01–03, Navigate 01–03).
-  const RiderTurnTile.order({super.key, this.left = false}) : radius = 10, arrowHeight = 18, stroke = 2.5;
+  const RiderTurnTile.order({super.key, this.left = false}) : radius = AppSizes.s10, arrowHeight = AppSizes.s18, stroke = AppSizes.s2_5;
 
   final bool left;
   final double radius;
@@ -500,16 +492,16 @@ class RiderTurnTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 40,
-    height: 40,
+    width: AppSizes.s40,
+    height: AppSizes.s40,
     alignment: Alignment.center,
     decoration: BoxDecoration(color: RiderColors.brandTint, borderRadius: BorderRadius.circular(radius)),
     // The design's right-turn arrow sits off centre; its left-turn arrow is shorter.
     child: Transform.translate(
-      offset: left ? const Offset(0, 1.17) : const Offset(-4, -1.83),
+      offset: left ? const Offset(AppSizes.s0, AppSizes.s1_17) : const Offset(-AppSizes.s4, -AppSizes.s1_83),
       child: RiderTurnRightIcon(
         color: RiderColors.brand,
-        height: left ? arrowHeight - 2 : arrowHeight,
+        height: left ? arrowHeight - AppSizes.s2 : arrowHeight,
         left: left,
         stroke: stroke,
       ),
@@ -520,7 +512,7 @@ class RiderTurnTile extends StatelessWidget {
 /// The design's turn arrow (Shift 21, 52): up, then right with a head; [left]
 /// mirrors it (Shift 22).
 class RiderTurnRightIcon extends StatelessWidget {
-  const RiderTurnRightIcon({super.key, this.color = RiderColors.white, this.height = 17, this.left = false, this.stroke});
+  const RiderTurnRightIcon({super.key, this.color = RiderColors.white, this.height = AppSizes.s17, this.left = false, this.stroke});
 
   final Color color;
   final double height;
@@ -533,7 +525,7 @@ class RiderTurnRightIcon extends StatelessWidget {
   Widget build(BuildContext context) => Transform.flip(
     flipX: left,
     child: SizedBox(
-      width: height * 12 / 17,
+      width: height * AppSizes.s12 / AppSizes.s17,
       height: height,
       child: CustomPaint(painter: _TurnRightPainter(color, stroke)),
     ),
@@ -548,19 +540,19 @@ class _TurnRightPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final x = size.width / 12, y = size.height / 17;
+    final x = size.width / AppSizes.s12, y = size.height / AppSizes.s17;
     canvas.drawPath(
       Path()
-        ..moveTo(x, 16.5 * y)
-        ..lineTo(x, 5.5 * y)
-        ..lineTo(11 * x, 5.5 * y)
-        ..moveTo(6.5 * x, y)
-        ..lineTo(11 * x, 5.5 * y)
-        ..lineTo(6.5 * x, 10 * y),
+        ..moveTo(x, AppSizes.s16_5 * y)
+        ..lineTo(x, AppSizes.s5_5 * y)
+        ..lineTo(AppSizes.s11 * x, AppSizes.s5_5 * y)
+        ..moveTo(AppSizes.s6_5 * x, y)
+        ..lineTo(AppSizes.s11 * x, AppSizes.s5_5 * y)
+        ..lineTo(AppSizes.s6_5 * x, AppSizes.s10 * y),
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke ?? 2.2 * y
+        ..strokeWidth = stroke ?? AppSizes.s2_2 * y
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );

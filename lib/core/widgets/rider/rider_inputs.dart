@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
 import 'rider_text.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_sizes.dart';
+import '../../constants/app_keys.dart';
+import '../../constants/app_numbers.dart';
 
 /// Grey filled pill text field (Background/Overlay), 56 high.
 class RiderTextField extends StatelessWidget {
@@ -45,12 +49,12 @@ class RiderTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(RiderRadius.card),
-      borderSide: error == null ? BorderSide.none : const BorderSide(color: RiderColors.error, width: 1.5),
+      borderSide: error == null ? BorderSide.none : const BorderSide(color: RiderColors.error, width: AppSizes.s1_5),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (label != null) ...[Text(label!, style: RiderText.labelLarge), const SizedBox(height: 8)],
+        if (label != null) ...[Text(label!, style: RiderText.labelLarge), const SizedBox(height: AppSizes.s8)],
         TextField(
           controller: controller,
           keyboardType: keyboardType,
@@ -68,19 +72,19 @@ class RiderTextField extends StatelessWidget {
             filled: true,
             fillColor: RiderColors.overlay,
             counterText: '',
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s16),
             prefixIcon: prefix,
             suffixIcon: suffix,
             border: border,
             enabledBorder: border,
             disabledBorder: border,
             focusedBorder: border.copyWith(
-              borderSide: BorderSide(color: error == null ? RiderColors.brand : RiderColors.error, width: 1.5),
+              borderSide: BorderSide(color: error == null ? RiderColors.brand : RiderColors.error, width: AppSizes.s1_5),
             ),
           ),
         ),
         if (error != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSizes.s8),
           Text(error!, style: RiderText.caption.copyWith(color: RiderColors.error)),
         ],
       ],
@@ -101,7 +105,7 @@ class RiderCodeBoxes extends StatelessWidget {
     required this.value,
     this.error = false,
     this.dimmed = false,
-    this.boxSize = 46,
+    this.boxSize = AppSizes.s46,
     this.spread = false,
   }) : boxHeight = null,
        outlined = false;
@@ -114,8 +118,8 @@ class RiderCodeBoxes extends StatelessWidget {
     required this.value,
     this.error = false,
     this.dimmed = false,
-  }) : boxSize = 64,
-       boxHeight = 72,
+  }) : boxSize = AppSizes.s64,
+       boxHeight = AppSizes.s72,
        spread = false,
        outlined = true;
 
@@ -146,10 +150,10 @@ class RiderCodeBoxes extends StatelessWidget {
       final Border? border;
       if (error) {
         fill = RiderColors.white;
-        border = Border.all(color: RiderColors.error, width: 1.5);
+        border = Border.all(color: RiderColors.error, width: AppSizes.s1_5);
       } else if (focused) {
         fill = RiderColors.white;
-        border = Border.all(color: RiderColors.brand, width: 1.5);
+        border = Border.all(color: RiderColors.brand, width: AppSizes.s1_5);
       } else if (outlined) {
         fill = RiderColors.white;
         border = Border.all(color: RiderColors.divider);
@@ -162,22 +166,22 @@ class RiderCodeBoxes extends StatelessWidget {
       }
       return Container(
         width: boxSize,
-        height: boxHeight ?? boxSize * 56 / 46,
+        height: boxHeight ?? boxSize * AppSizes.s56 / AppSizes.s46,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: fill,
           borderRadius: BorderRadius.circular(RiderRadius.field),
           border: border,
           boxShadow: filled && !error && !outlined
-              ? const [BoxShadow(color: RiderColors.shadow, offset: Offset(0, 2), blurRadius: 3.46)]
+              ? RiderLayout.shadowShadow2x3_46
               : null,
         ),
         child: filled
             ? Text(value[i], style: digitStyle.copyWith(color: error ? RiderColors.error : RiderColors.ink))
             : (focused
                   ? Container(
-                      width: 2,
-                      height: outlined ? 28 : 24,
+                      width: AppSizes.s2,
+                      height: outlined ? AppSizes.s28 : AppSizes.s24,
                       decoration: BoxDecoration(
                         color: RiderColors.brand,
                         borderRadius: BorderRadius.circular(RiderRadius.pill),
@@ -188,11 +192,11 @@ class RiderCodeBoxes extends StatelessWidget {
     }
 
     return Opacity(
-      opacity: dimmed ? 0.6 : 1,
+      opacity: dimmed ? AppOpacity.o0_6 : AppOpacity.o1,
       child: Row(
         mainAxisAlignment: spread ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
         children: [
-          for (var i = 0; i < length; i++) ...[if (i > 0 && !spread) const SizedBox(width: 12), box(i)],
+          for (var i = 0; i < length; i++) ...[if (i > 0 && !spread) const SizedBox(width: AppSizes.s12), box(i)],
         ],
       ),
     );
@@ -216,13 +220,13 @@ class RiderKeypad extends StatelessWidget {
     Widget sized(Widget child) => keyWidth == null ? Expanded(child: child) : SizedBox(width: keyWidth, child: child);
     Widget key({String? digit, VoidCallback? onTap, Widget? child, bool plain = false}) => sized(
       Material(
-        color: plain ? Colors.transparent : RiderColors.white,
+        color: plain ? RiderColors.transparent : RiderColors.white,
         borderRadius: BorderRadius.circular(RiderRadius.pill),
         child: InkWell(
           borderRadius: BorderRadius.circular(RiderRadius.pill),
           onTap: enabled ? onTap : null,
           child: SizedBox(
-            height: 48,
+            height: AppSizes.s48,
             child: Center(child: child ?? Text(digit ?? '', style: RiderText.subheadingMedium)),
           ),
         ),
@@ -231,33 +235,33 @@ class RiderKeypad extends StatelessWidget {
     Widget digit(String d) => key(digit: d, onTap: () => onDigit(d));
     Widget row(List<Widget> keys) => Row(
       children: [
-        for (var i = 0; i < keys.length; i++) ...[if (i > 0) const SizedBox(width: 4), keys[i]],
+        for (var i = 0; i < keys.length; i++) ...[if (i > 0) const SizedBox(width: AppSizes.s4), keys[i]],
       ],
     );
     return Container(
       color: RiderColors.keypad,
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+      padding: const EdgeInsets.fromLTRB(AppSizes.s8, AppSizes.s8, AppSizes.s8, AppSizes.s12),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            row([digit('1'), digit('2'), digit('3')]),
-            const SizedBox(height: 4),
-            row([digit('4'), digit('5'), digit('6')]),
-            const SizedBox(height: 4),
-            row([digit('7'), digit('8'), digit('9')]),
-            const SizedBox(height: 4),
+            row([digit(AppStrings.digit1), digit(AppStrings.digit2), digit(AppStrings.digit3)]),
+            const SizedBox(height: AppSizes.s4),
+            row([digit(AppStrings.digit4), digit(AppStrings.digit5), digit(AppStrings.digit6)]),
+            const SizedBox(height: AppSizes.s4),
+            row([digit(AppStrings.digit7), digit(AppStrings.digit8), digit(AppStrings.digit9)]),
+            const SizedBox(height: AppSizes.s4),
             row([
               sized(const SizedBox()),
-              digit('0'),
+              digit(AppStrings.digit0),
               key(
                 plain: true,
                 onTap: onBackspace,
                 child: Semantics(
-                  label: 'Delete',
+                  label: AppStrings.delete,
                   button: true,
-                  child: const Icon(Icons.close, color: RiderColors.ink, size: 24),
+                  child: const Icon(Icons.close, color: RiderColors.ink, size: AppSizes.s24),
                 ),
               ),
             ]),
@@ -281,9 +285,9 @@ class RiderPhoneField extends StatelessWidget {
     this.focusNode,
     this.tone = RiderFieldTone.idle,
     this.enabled = true,
-    this.hint = 'Mobile number',
-    this.countryCode = '+91',
-    this.flag = '\u{1F1EE}\u{1F1F3}',
+    this.hint = AppStrings.mobileNumber,
+    this.countryCode = AppStrings.indiaDialCode,
+    this.flag = AppStrings.indiaFlag,
     this.inputFormatters,
     this.onChanged,
     this.onSubmitted,
@@ -309,20 +313,20 @@ class RiderPhoneField extends StatelessWidget {
       RiderFieldTone.warning => RiderColors.warning,
     };
     return Opacity(
-      opacity: enabled ? 1 : 0.6,
+      opacity: enabled ? AppOpacity.o1 : AppOpacity.o0_6,
       child: Container(
-        height: 56,
-        padding: const EdgeInsets.only(left: 12, right: 16),
+        height: AppSizes.s56,
+        padding: const EdgeInsets.only(left: AppSizes.s12, right: AppSizes.s16),
         decoration: BoxDecoration(
           color: borderColor == null ? RiderColors.inkFaint : RiderColors.white,
           borderRadius: BorderRadius.circular(RiderRadius.field),
-          border: borderColor == null ? null : Border.all(color: borderColor, width: 1.5),
+          border: borderColor == null ? null : Border.all(color: borderColor, width: AppSizes.s1_5),
         ),
         child: Row(
           children: [
             Container(
               // Figma draws the chip's border inside its width.
-              padding: const EdgeInsets.fromLTRB(6, 8, 8, 8),
+              padding: const EdgeInsets.fromLTRB(AppSizes.s6, AppSizes.s8, AppSizes.s8, AppSizes.s8),
               decoration: BoxDecoration(
                 color: RiderColors.white,
                 borderRadius: BorderRadius.circular(RiderRadius.pill),
@@ -333,20 +337,20 @@ class RiderPhoneField extends StatelessWidget {
                 children: [
                   // Android's flag glyph runs wider than the design's: it keeps an 18px slot.
                   SizedBox(
-                    width: 18,
-                    child: Text(flag, maxLines: 1, style: RiderText.bodyMedium.copyWith(fontSize: 12.5, height: 20 / 12.5)),
+                    width: AppSizes.s18,
+                    child: Text(flag, maxLines: AppLimits.oneLine, style: RiderText.phoneFlag),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSizes.s4),
                   RiderHugText(countryCode, style: RiderText.labelLarge),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down, size: 16, color: RiderColors.grey),
+                  const SizedBox(width: AppSizes.s4),
+                  const Icon(Icons.keyboard_arrow_down, size: AppSizes.s16, color: RiderColors.grey),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.s12),
             Expanded(
               child: TextField(
-                key: const Key('phoneField'),
+                key: const Key(AppKeys.phonefield),
                 controller: controller,
                 focusNode: focusNode,
                 enabled: enabled,
@@ -355,10 +359,10 @@ class RiderPhoneField extends StatelessWidget {
                 inputFormatters: inputFormatters,
                 onChanged: onChanged,
                 onSubmitted: onSubmitted,
-                style: RiderText.bodyLarge.copyWith(height: 20 / 16),
+                style: RiderText.bodyLargeTight,
                 cursorColor: RiderColors.brand,
-                cursorWidth: 2,
-                cursorHeight: 22,
+                cursorWidth: AppSizes.s2,
+                cursorHeight: AppSizes.s22,
                 decoration: InputDecoration(
                   isCollapsed: true,
                   filled: false,
@@ -367,7 +371,7 @@ class RiderPhoneField extends StatelessWidget {
                   focusedBorder: InputBorder.none,
                   disabledBorder: InputBorder.none,
                   hintText: hint,
-                  hintStyle: RiderText.bodyLarge.copyWith(color: RiderColors.grey, height: 20 / 16),
+                  hintStyle: RiderText.bodyLargeTight.copyWith(color: RiderColors.grey),
                 ),
               ),
             ),
@@ -398,17 +402,17 @@ class RiderRadioRow extends StatelessWidget {
         children: [
           Expanded(child: Text(label, style: RiderText.labelLarge)),
           Container(
-            width: 22,
-            height: 22,
+            width: AppSizes.s22,
+            height: AppSizes.s22,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: selected ? RiderColors.brand : RiderColors.divider, width: 1.5),
+              border: Border.all(color: selected ? RiderColors.brand : RiderColors.divider, width: AppSizes.s1_5),
             ),
             child: selected
                 ? Container(
-                    width: 10,
-                    height: 10,
+                    width: AppSizes.s10,
+                    height: AppSizes.s10,
                     decoration: const BoxDecoration(color: RiderColors.brand, shape: BoxShape.circle),
                   )
                 : null,
@@ -442,37 +446,37 @@ class RiderOptionCard extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSizes.s16),
         decoration: BoxDecoration(
           color: selected ? RiderColors.optionSelected : RiderColors.white,
           borderRadius: BorderRadius.circular(RiderRadius.field),
-          border: selected ? Border.all(color: RiderColors.brand, width: 2) : Border.all(color: RiderColors.panelBorder),
+          border: selected ? Border.all(color: RiderColors.brand, width: AppSizes.s2) : Border.all(color: RiderColors.panelBorder),
         ),
         child: Row(
           children: [
             Container(
-              width: 24,
-              height: 24,
+              width: AppSizes.s24,
+              height: AppSizes.s24,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: selected ? RiderColors.brand : RiderColors.stepRing, width: 2),
+                border: Border.all(color: selected ? RiderColors.brand : RiderColors.stepRing, width: AppSizes.s2),
               ),
               child: selected
                   ? Container(
-                      width: 12,
-                      height: 12,
+                      width: AppSizes.s12,
+                      height: AppSizes.s12,
                       decoration: const BoxDecoration(color: RiderColors.brand, shape: BoxShape.circle),
                     )
                   : null,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.s12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: RiderText.labelLarge),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSizes.s2),
                   Text(subtitle, style: RiderText.caption),
                 ],
               ),
@@ -502,8 +506,8 @@ class RiderRoundStepper extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          width: 40,
-          height: 40,
+          width: AppSizes.s40,
+          height: AppSizes.s40,
           alignment: Alignment.center,
           decoration: const BoxDecoration(color: RiderColors.brandTint, shape: BoxShape.circle),
           child: Text(glyph, style: RiderText.h4.copyWith(color: RiderColors.brand)),
@@ -513,11 +517,11 @@ class RiderRoundStepper extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        button('−', 'Less', onMinus),
-        const SizedBox(width: 12),
+        button(AppStrings.minusSign, AppStrings.less, onMinus),
+        const SizedBox(width: AppSizes.s12),
         Text('$value', style: RiderText.h4),
-        const SizedBox(width: 12),
-        button('+', 'More', onPlus),
+        const SizedBox(width: AppSizes.s12),
+        button(AppStrings.plusSign, AppStrings.more, onPlus),
       ],
     );
   }
@@ -541,16 +545,16 @@ class RiderCheckboxRow extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 20,
-              height: 20,
+              width: AppSizes.s20,
+              height: AppSizes.s20,
               decoration: BoxDecoration(
                 color: value ? RiderColors.brand : RiderColors.white,
                 borderRadius: BorderRadius.circular(RiderRadius.s),
-                border: value ? null : Border.all(color: RiderColors.divider, width: 1.5),
+                border: value ? null : Border.all(color: RiderColors.divider, width: AppSizes.s1_5),
               ),
-              child: value ? const Icon(Icons.check, size: 16, color: RiderColors.white) : null,
+              child: value ? const Icon(Icons.check, size: AppSizes.s16, color: RiderColors.white) : null,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.s12),
             Expanded(child: Text(label, style: RiderText.bodyMedium)),
           ],
         ),
@@ -588,14 +592,14 @@ class RiderInlineMessage extends StatelessWidget {
       children: [
         // The glyph fills 5/6 of its box; 26.4 draws the design's 22px ring.
         SizedBox.square(
-          dimension: 24,
+          dimension: AppSizes.s24,
           child: OverflowBox(
-            maxWidth: 26.4,
-            maxHeight: 26.4,
-            child: Icon(Icons.error_outline, size: 26.4, color: iconColor ?? color),
+            maxWidth: AppSizes.s26_4,
+            maxHeight: AppSizes.s26_4,
+            child: Icon(Icons.error_outline, size: AppSizes.s26_4, color: iconColor ?? color),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSizes.s8),
         Expanded(
           child: Text(message, style: RiderText.bodyMedium.copyWith(color: color)),
         ),

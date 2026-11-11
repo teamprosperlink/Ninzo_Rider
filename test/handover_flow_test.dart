@@ -3,24 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ninzo_rider/features/orders/presentation/viewmodels/handover_view_model.dart';
-import 'package:ninzo_rider/core/error/app_exception.dart';
-import 'package:ninzo_rider/features/intro/domain/entities/app_permission.dart';
-import 'package:ninzo_rider/features/online/domain/entities/online_status.dart';
-import 'package:ninzo_rider/features/online/data/repositories/demo_online_repository.dart';
-import 'package:ninzo_rider/features/online/data/repositories/demo_rider_location.dart';
-import 'package:ninzo_rider/features/orders/data/models/delivery_order_model.dart';
-import 'package:ninzo_rider/features/orders/data/repositories/demo_delivery_repository.dart';
-import 'package:ninzo_rider/features/orders/data/repositories/demo_order_repository.dart';
-import 'package:ninzo_rider/features/orders/data/repositories/local_handover_stores.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/delivery_order.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/handover.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/order.dart' show OrderItem;
-import 'package:ninzo_rider/features/orders/domain/entities/problem_report.dart';
-import 'package:ninzo_rider/features/orders/domain/usecases/handover_usecases.dart';
-import 'package:ninzo_rider/features/orders/presentation/viewmodels/problem_report_view_model.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
+import 'package:ninzo_rider/presentation/orders/viewmodels/handover_view_model.dart';
+import 'package:ninzo_rider/presentation/orders/viewmodels/order_flow_view_model.dart';
+import 'package:ninzo_rider/presentation/orders/views/order_flow_page.dart';
+import 'package:ninzo_rider/core/errors/app_exception.dart';
+import 'package:ninzo_rider/domain/entities/app_permission.dart';
+import 'package:ninzo_rider/domain/entities/online_status.dart';
+import 'package:ninzo_rider/data/repositories/demo_online_repository.dart';
+import 'package:ninzo_rider/data/repositories/demo_rider_location.dart';
+import 'package:ninzo_rider/data/repositories/demo_delivery_repository.dart';
+import 'package:ninzo_rider/data/datasources/local/local_handover_stores.dart';
+import 'package:ninzo_rider/domain/entities/delivery_order.dart';
+import 'package:ninzo_rider/domain/entities/handover.dart';
+import 'package:ninzo_rider/domain/entities/order.dart' show OrderItem;
+import 'package:ninzo_rider/domain/entities/problem_report.dart';
+import 'package:ninzo_rider/domain/usecases/handover_usecases.dart';
+import 'package:ninzo_rider/presentation/orders/viewmodels/problem_report_view_model.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
 
 import 'fakes.dart';
 
@@ -49,8 +49,6 @@ void main() {
       expect(packChecksOf(order), 3);
       expect(isPacked(order, {0, 1}), isFalse);
       expect(isPacked(order, {0, 1, 2}), isTrue);
-      expect(anyItemUnticked(order, {0}), isTrue);
-      expect(anyItemUnticked(order, {0, 1}), isFalse);
     });
 
     test('partial quantities: the note and what changes hands', () {
@@ -234,35 +232,12 @@ void main() {
     });
   });
 
-  group('Delivery history', () {
-    test('a new-flow delivery reads as a history order', () {
-      final order = DeliveryOrderModel.historyOrder('o1', {
-        'orderNumber': 'A2931',
-        'riderId': 'u1',
-        'gate': {'name': 'Gate 3', 'landmark': 'Main entrance', 'lat': 13.0, 'lng': 77.0},
-        'items': [
-          {'name': 'Smash Burger', 'qty': 2},
-        ],
-        'handedOver': [
-          {'name': 'Smash Burger', 'qty': 1},
-        ],
-        'payment': 'cash',
-        'amount': 149,
-        'riderFee': 40,
-        'status': 'delivered',
-      });
-      expect(order.orderNumber, 'A2931');
-      expect(order.restaurant.name, 'Gate 3');
-      expect(order.itemCount, 1);
-      expect(order.collectCash, isTrue);
-      expect(order.riderFee, 40);
-    });
+  group('Demo delivery', () {
 
-    test('the demo counts a delivery: stats, stock and history', () async {
+    test('the demo counts a delivery: stats and stock', () async {
       final online = DemoOnlineRepository(() => now);
       online.set(OnlineStatus(queue: online.sampleQueue, activeOrderId: 'A2931'));
-      final history = DemoOrderRepository();
-      final demo = DemoDeliveryRepository(() => now, online, DemoRiderLocation(), null, history);
+      final demo = DemoDeliveryRepository(() => now, online, DemoRiderLocation(), null);
       await demo.watchOrder('A2931').first;
 
       expect(
@@ -287,7 +262,6 @@ void main() {
       expect(online.status.orders, 1);
       expect(online.status.earned, 40);
       expect(online.status.sold, 3);
-      expect((await history.watchHistory('u1').first).single.orderNumber, 'A2931');
 
       await demo.syncSavedHandover(
         SavedHandover.of(
@@ -299,7 +273,6 @@ void main() {
       );
       expect(online.status.orders, 2);
       expect(online.status.sold, 4);
-      expect((await history.watchHistory('u1').first), hasLength(2));
     });
   });
 
@@ -399,6 +372,25 @@ void main() {
       await tap(tester, 'Back to waiting');
       expect(fakes.online.status.value.activeOrderId, isNull);
       expect(fakes.online.status.value.queue, isEmpty);
+    });
+
+    testWidgets('Packed before the ride (rider API): Packed – go sets off, the code waits', (tester) async {
+      final fakes = rider();
+      fakes.delivery.order.value = testDeliveryOrder(assignedAt: assigned);
+      await setSize(tester);
+      await pumpApp(tester, fakes);
+      final container = ProviderScope.containerOf(tester.element(find.byType(OrderFlowPage)));
+      // Order 01's "Navigate" in the rider API's flow.
+      container.read(orderFlowViewModelProvider.notifier).handOver();
+      await settle(tester);
+      expect(find.text('Pack order #A2931'), findsOneWidget);
+      await tap(tester, 'Smash Burger × 2');
+      await tap(tester, 'Paneer Tikka Wrap × 1');
+      await tap(tester, 'Bag sealed');
+      await tap(tester, 'Packed – go');
+      expect(fakes.delivery.order.value!.status, DeliveryStatus.onTheWay);
+      expect(find.text('I’ve reached the gate'), findsOneWidget);
+      expect(container.read(handoverViewModelProvider).step, HandoverStep.code);
     });
 
     testWidgets('Cash: straight to Collect cash, no code', (tester) async {

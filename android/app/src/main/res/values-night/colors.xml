@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark notification shade: light text so it stays readable. -->
+    <color name="push_title">#FFFFFFFF</color>
+    <color name="push_body">#FFB8B8B8</color>
+</resources>

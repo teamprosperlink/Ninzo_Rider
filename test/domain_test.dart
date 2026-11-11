@@ -2,59 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ninzo_rider/core/utils/formatters.dart';
 import 'package:ninzo_rider/core/utils/validators.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/order.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_document.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/delivery_stats.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/rider_document.dart';
 
 import 'fakes.dart';
 
 void main() {
-  test('Only accepted and picked-up orders are active', () {
-    expect(OrderStatus.values.where((s) => s.isActive), [
-      OrderStatus.accepted,
-      OrderStatus.pickedUp,
-    ]);
-  });
-
-  test('Deadline is 90 seconds after pickup; on time means within it', () {
-    final pickup = DateTime(2026, 1, 1, 12);
-    expect(testOrder().deadline, isNull);
-    expect(
-      testOrder(pickedUpAt: pickup).deadline,
-      pickup.add(const Duration(seconds: 90)),
-    );
-
-    final fast = testOrder(
-      pickedUpAt: pickup,
-      deliveredAt: pickup.add(const Duration(seconds: 90)),
-    );
-    final slow = testOrder(
-      pickedUpAt: pickup,
-      deliveredAt: pickup.add(const Duration(seconds: 91)),
-    );
-    expect(fast.deliveredOnTime, isTrue);
-    expect(slow.deliveredOnTime, isFalse);
-    expect(slow.deliveryTime, const Duration(seconds: 91));
-  });
-
-  test('Stats sum fees and count on-time deliveries', () {
-    final pickup = DateTime(2026, 1, 1, 12);
-    final stats = DeliveryStats.of([
-      testOrder(
-        pickedUpAt: pickup,
-        deliveredAt: pickup.add(const Duration(seconds: 60)),
-      ),
-      testOrder(
-        pickedUpAt: pickup,
-        deliveredAt: pickup.add(const Duration(seconds: 120)),
-      ),
-    ]);
-    expect(stats.earnings, 50);
-    expect(stats.deliveries, 2);
-    expect(stats.onTimePercent, 50);
-    expect(const DeliveryStats().onTimePercent, 100);
-  });
 
   test('A document counts as added with every side and no open issue', () {
     final a = Fakes().riderApplication(RegistrationStatus.draft);

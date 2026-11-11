@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Ninzo mark for the notification circle (RiderLogoMark): three speed
+     lines and the "N", in white; Android tints the circle with RiderColors.brand. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="104"
+    android:viewportHeight="104">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M15,41 L30,41 M15,51 L38,51 M15,61 L28,61" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M44,77 L44,30 L54,30 L75,60 L75,30 L85,30 L85,77 L75,77 L54,47 L54,77 Z" />
+</vector>

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
@@ -30,6 +32,12 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // MAPS_API_KEY=... lives in .env at the project root, which git ignores.
+        val env = Properties()
+        rootProject.file("../.env").takeIf { it.exists() }?.inputStream()?.use { env.load(it) }
+        manifestPlaceholders["MAPS_API_KEY"] = env.getProperty("MAPS_API_KEY") ?: "NO_KEY_SET"
+        manifestPlaceholders["STAGING_API_URL"] = env.getProperty("STAGING_API_URL") ?: ""
     }
 
     buildTypes {

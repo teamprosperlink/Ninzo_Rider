@@ -6,12 +6,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'package:ninzo_rider/core/theme/app_theme.dart';
-import 'package:ninzo_rider/features/intro/domain/entities/app_permission.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/pre_shift_check.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift_push.dart';
-import 'package:ninzo_rider/features/shift/presentation/widgets/push_preview.dart';
+import 'package:ninzo_rider/domain/entities/app_permission.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/pre_shift_check.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
+import 'package:ninzo_rider/domain/entities/shift_push.dart';
+import 'package:ninzo_rider/presentation/shift/widgets/push_preview.dart';
 
 import '../../test/fakes.dart';
 

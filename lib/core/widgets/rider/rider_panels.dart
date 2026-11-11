@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
 import 'rider_status.dart';
 import 'rider_text.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_sizes.dart';
+import '../../constants/app_numbers.dart';
 
 /// White panel with a hairline border and the soft shadow, its children
 /// [gap] apart (Home "Your ride", the pre-shift checklist, Shift 53).
@@ -10,9 +13,9 @@ class RiderPanel extends StatelessWidget {
   const RiderPanel({
     super.key,
     required this.children,
-    this.gap = 12,
+    this.gap = AppSizes.s12,
     this.radius = RiderRadius.card,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(AppSizes.s16),
   });
 
   final List<Widget> children;
@@ -69,37 +72,29 @@ class RiderSummaryCard extends StatelessWidget {
     children: [
       if (title != null) Text(title!, style: RiderText.labelLarge),
       for (var i = 0; i < rows.length; i++) ...[
-        if (divided && i > 0) const Divider(height: 1, thickness: 1, color: RiderColors.divider),
+        if (divided && i > 0) const Divider(height: AppSizes.s1, thickness: AppSizes.s1, color: RiderColors.divider),
         _row(rows[i], valueColors[i], radius),
       ],
     ],
   );
 
   static Widget _row((String, String) row, Color? color, double radius) => SizedBox(
-    height: 20,
+    height: AppSizes.s20,
     child: Row(
       children: [
         Expanded(
           child: Text(
             row.$1,
-            maxLines: 1,
+            maxLines: AppLimits.oneLine,
             overflow: TextOverflow.ellipsis,
             style: RiderText.bodyMedium.copyWith(color: RiderColors.grey),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSizes.s8),
         // A long gate name mustn't push the row off the card.
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 220),
-          // Values hug their text on the 20-radius cards; the 16-radius ones align exactly right.
-          child: radius == RiderRadius.field
-              ? Text(
-                  row.$2,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: color == null ? RiderText.labelLarge : RiderText.labelLarge.copyWith(color: color),
-                )
-              : RiderHugText(
+          constraints: const BoxConstraints(maxWidth: AppSizes.s220),
+          child: RiderHugText(
                   row.$2,
                   overflow: TextOverflow.ellipsis,
                   style: color == null ? RiderText.labelLarge : RiderText.labelLarge.copyWith(color: color),
@@ -129,13 +124,13 @@ class RiderCheckRow extends StatelessWidget {
       child: Row(
         children: [
           RiderCheckCircle(checked: checked),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSizes.s12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: RiderText.labelLarge),
-                if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle!, style: RiderText.caption)],
+                if (subtitle != null) ...[const SizedBox(height: AppSizes.s2), Text(subtitle!, style: RiderText.caption)],
               ],
             ),
           ),
@@ -163,23 +158,23 @@ class RiderStepRow extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 24,
-          height: 24,
+          width: AppSizes.s24,
+          height: AppSizes.s24,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: state == RiderStepState.done ? RiderColors.brand : null,
             border: state == RiderStepState.done
                 ? null
-                : Border.all(color: todo ? RiderColors.stepRing : RiderColors.brand, width: 2),
+                : Border.all(color: todo ? RiderColors.stepRing : RiderColors.brand, width: AppSizes.s2),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSizes.s12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: RiderText.labelLarge.copyWith(color: todo ? RiderColors.grey : RiderColors.ink)),
-              if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle!, style: RiderText.caption)],
+              if (subtitle != null) ...[const SizedBox(height: AppSizes.s2), Text(subtitle!, style: RiderText.caption)],
             ],
           ),
         ),
@@ -197,12 +192,14 @@ class RiderHomeHeader extends StatelessWidget {
     required this.name,
     this.status = const RiderStatusPill.offline(),
     this.onAvatarTap,
+    this.avatarTint,
   });
 
   final String greeting;
   final String name;
   final Widget status;
   final VoidCallback? onAvatarTap;
+  final Color? avatarTint;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -212,14 +209,14 @@ class RiderHomeHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(greeting, style: RiderText.caption),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSizes.s2),
             Text(name, style: RiderText.subheadingMedium, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
       status,
-      const SizedBox(width: 12),
-      RiderAvatar(name, size: 40, onTap: onAvatarTap),
+      const SizedBox(width: AppSizes.s12),
+      RiderAvatar(name, size: AppSizes.s40, onTap: onAvatarTap, tint: avatarTint),
     ],
   );
 }
@@ -232,8 +229,8 @@ class RiderNotificationCard extends StatelessWidget {
     required this.title,
     required this.body,
     this.actions = const [],
-    this.app = 'NINZO RIDER',
-    this.when = 'now',
+    this.app = AppStrings.ninzoRider,
+    this.when = AppStrings.now2,
   });
 
   final String title;
@@ -246,24 +243,24 @@ class RiderNotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
+    padding: const EdgeInsets.all(AppSizes.s14),
     decoration: BoxDecoration(
       color: RiderColors.white,
       borderRadius: BorderRadius.circular(RiderRadius.card),
       // Figma's 4 blur; Flutter spreads the same number about 40% wider.
-      boxShadow: const [BoxShadow(color: RiderColors.shadow, offset: Offset(0, 2), blurRadius: 2.6)],
+      boxShadow: RiderLayout.shadowShadow2x2_6,
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: AppSizes.s40,
+          height: AppSizes.s40,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: RiderColors.brand, borderRadius: BorderRadius.circular(10)),
-          child: Text('N', style: RiderText.labelLarge.copyWith(color: RiderColors.white)),
+          decoration: BoxDecoration(color: RiderColors.brand, borderRadius: BorderRadius.circular(AppSizes.s10)),
+          child: Text(AppStrings.textN, style: RiderText.labelLarge.copyWith(color: RiderColors.white)),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSizes.s12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,19 +271,19 @@ class RiderNotificationCard extends StatelessWidget {
                   Text(when, style: RiderText.captionSmall),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSizes.s2),
               Text(title, style: RiderText.labelLarge),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSizes.s2),
               Text(body, style: RiderText.bodySmall.copyWith(color: RiderColors.grey)),
               if (actions.isNotEmpty) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSizes.s2),
                 Row(
                   children: [
                     for (var i = 0; i < actions.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 24),
+                      if (i > 0) const SizedBox(width: AppSizes.s24),
                       Text(
                         actions[i],
-                        style: RiderText.bodySmall.copyWith(color: i == 0 ? RiderColors.brand : const Color(0xFF000000)),
+                        style: RiderText.bodySmall.copyWith(color: i == 0 ? RiderColors.brand : RiderColors.black),
                       ),
                     ],
                   ],
@@ -326,7 +323,7 @@ class RiderItemsToggle extends StatelessWidget {
       color: RiderColors.white,
       borderRadius: BorderRadius.circular(RiderRadius.card),
       border: Border.all(color: RiderColors.hairline),
-      boxShadow: const [BoxShadow(color: RiderColors.shadow, offset: Offset(0, 2), blurRadius: 2.6)],
+      boxShadow: RiderLayout.shadowShadow2x2_6,
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -338,13 +335,13 @@ class RiderItemsToggle extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s14),
               child: Row(
                 children: [
-                  SizedBox.square(dimension: 12, child: CustomPaint(painter: _TogglePainter(open))),
-                  const SizedBox(width: 12),
+                  SizedBox.square(dimension: AppSizes.s12, child: CustomPaint(painter: _TogglePainter(open))),
+                  const SizedBox(width: AppSizes.s12),
                   Expanded(child: Text(title, style: RiderText.labelLarge)),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSizes.s12),
                   Text(trailing, style: RiderText.labelMedium.copyWith(color: RiderColors.grey)),
                 ],
               ),
@@ -353,13 +350,13 @@ class RiderItemsToggle extends StatelessWidget {
         ),
         if (open)
           for (final (name, quantity) in items) ...[
-            const Divider(height: 1, thickness: 1, color: RiderColors.hairline),
+            const Divider(height: AppSizes.s1, thickness: AppSizes.s1, color: RiderColors.hairline),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s12),
               child: Row(
                 children: [
                   Expanded(child: Text(name, style: RiderText.bodyMedium)),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSizes.s12),
                   Text(quantity, style: RiderText.labelLarge),
                 ],
               ),
@@ -377,16 +374,16 @@ class _TogglePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final u = size.width / 12;
+    final u = size.width / AppSizes.s12;
     final path = open
         ? (Path()
-            ..moveTo(u, 2.5 * u)
-            ..lineTo(11 * u, 2.5 * u)
-            ..lineTo(6 * u, 10.5 * u))
+            ..moveTo(u, AppSizes.s2_5 * u)
+            ..lineTo(AppSizes.s11 * u, AppSizes.s2_5 * u)
+            ..lineTo(AppSizes.s6 * u, AppSizes.s10_5 * u))
         : (Path()
-            ..moveTo(2.5 * u, u)
-            ..lineTo(10.5 * u, 6 * u)
-            ..lineTo(2.5 * u, 11 * u));
+            ..moveTo(AppSizes.s2_5 * u, u)
+            ..lineTo(AppSizes.s10_5 * u, AppSizes.s6 * u)
+            ..lineTo(AppSizes.s2_5 * u, AppSizes.s11 * u));
     canvas.drawPath(path..close(), Paint()..color = RiderColors.grey);
   }
 
@@ -409,12 +406,12 @@ class RiderOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s12),
     decoration: BoxDecoration(
       color: RiderColors.white,
       borderRadius: BorderRadius.circular(RiderRadius.card),
       border: Border.all(color: RiderColors.hairline),
-      boxShadow: const [BoxShadow(color: RiderColors.shadow, offset: Offset(0, 2), blurRadius: 2.6)],
+      boxShadow: RiderLayout.shadowShadow2x2_6,
     ),
     child: Row(
       children: [
@@ -423,14 +420,14 @@ class RiderOrderCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: RiderText.labelLarge),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSizes.s2),
               Text(subtitle, style: RiderText.caption),
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSizes.s12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: AppSizes.s10, vertical: AppSizes.s4),
           decoration: BoxDecoration(
             color: active ? RiderColors.brandTint : RiderColors.hairline,
             borderRadius: BorderRadius.circular(RiderRadius.pill),
@@ -460,28 +457,28 @@ class RiderAlertBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chipBody = Container(
-      padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
+      padding: const EdgeInsets.fromLTRB(AppSizes.s8, AppSizes.s4, AppSizes.s12, AppSizes.s4),
       decoration: BoxDecoration(color: RiderColors.warningChip, borderRadius: BorderRadius.circular(RiderRadius.pill)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 6,
-            height: 6,
+            width: AppSizes.s6,
+            height: AppSizes.s6,
             decoration: const BoxDecoration(color: RiderColors.warningText, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSizes.s8),
           Text(chip ?? '', style: RiderText.labelSmall.copyWith(color: RiderColors.warningText)),
         ],
       ),
     );
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSizes.s16),
       decoration: BoxDecoration(
         color: RiderColors.warningBanner,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppSizes.s24),
         border: Border.all(color: RiderColors.warningBannerBorder),
-        boxShadow: const [BoxShadow(color: RiderColors.shadow, offset: Offset(0, 2), blurRadius: 2.6)],
+        boxShadow: RiderLayout.shadowShadow2x2_6,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -491,36 +488,36 @@ class RiderAlertBanner extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: AppSizes.s40,
+                height: AppSizes.s40,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: const Color(0xFFFBEACB), borderRadius: BorderRadius.circular(16)),
+                decoration: BoxDecoration(color: RiderColors.warningBadge, borderRadius: BorderRadius.circular(AppSizes.s16)),
                 child: Container(
-                  width: 18,
-                  height: 18,
+                  width: AppSizes.s18,
+                  height: AppSizes.s18,
                   alignment: Alignment.center,
                   decoration: const BoxDecoration(color: RiderColors.warningText, shape: BoxShape.circle),
                   child: Container(
-                    width: 6,
-                    height: 6,
+                    width: AppSizes.s6,
+                    height: AppSizes.s6,
                     decoration: const BoxDecoration(color: RiderColors.white, shape: BoxShape.circle),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSizes.s12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: RiderText.labelLarge),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSizes.s2),
                     Text(message, style: RiderText.caption),
                   ],
                 ),
               ),
             ],
           ),
-          if (chip != null) const SizedBox(height: 12),
+          if (chip != null) const SizedBox(height: AppSizes.s12),
           if (chip == null)
             const SizedBox.shrink()
           else if (onChipTap == null)
@@ -550,8 +547,8 @@ class RiderChoiceChips<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Wrap(
     alignment: WrapAlignment.center,
-    spacing: 8,
-    runSpacing: 8,
+    spacing: AppSizes.s8,
+    runSpacing: AppSizes.s8,
     children: [
       for (final option in options)
         Semantics(
@@ -560,7 +557,7 @@ class RiderChoiceChips<T> extends StatelessWidget {
           child: GestureDetector(
             onTap: onSelected == null ? null : () => onSelected!(option),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s10),
               decoration: BoxDecoration(
                 color: option == selected ? RiderColors.haloOuter : RiderColors.white,
                 borderRadius: BorderRadius.circular(RiderRadius.pill),

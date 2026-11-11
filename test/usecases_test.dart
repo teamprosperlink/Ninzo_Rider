@@ -1,28 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:ninzo_rider/core/error/app_exception.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/auth_failure.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/auth_user.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/rider_account_info.dart';
-import 'package:ninzo_rider/features/auth/domain/usecases/request_login_code.dart';
-import 'package:ninzo_rider/features/auth/domain/usecases/restore_session.dart';
-import 'package:ninzo_rider/features/auth/domain/usecases/sign_out.dart';
-import 'package:ninzo_rider/features/auth/domain/usecases/verify_otp.dart';
-import 'package:ninzo_rider/features/register/domain/entities/register_failure.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_document.dart';
-import 'package:ninzo_rider/features/register/domain/usecases/area_usecases.dart';
-import 'package:ninzo_rider/features/register/domain/usecases/document_usecases.dart';
-import 'package:ninzo_rider/features/register/domain/usecases/save_registration_details.dart';
-import 'package:ninzo_rider/features/register/domain/usecases/start_registration.dart';
+import 'package:ninzo_rider/core/errors/app_exception.dart';
+import 'package:ninzo_rider/domain/entities/auth_failure.dart';
+import 'package:ninzo_rider/domain/entities/auth_user.dart';
+import 'package:ninzo_rider/domain/entities/rider_account_info.dart';
+import 'package:ninzo_rider/domain/usecases/request_login_code.dart';
+import 'package:ninzo_rider/domain/usecases/restore_session.dart';
+import 'package:ninzo_rider/domain/usecases/sign_out.dart';
+import 'package:ninzo_rider/domain/usecases/verify_otp.dart';
+import 'package:ninzo_rider/domain/entities/register_failure.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/rider_document.dart';
+import 'package:ninzo_rider/domain/usecases/area_usecases.dart';
+import 'package:ninzo_rider/domain/usecases/document_usecases.dart';
+import 'package:ninzo_rider/domain/usecases/save_registration_details.dart';
+import 'package:ninzo_rider/domain/usecases/start_registration.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
-import 'package:ninzo_rider/features/orders/domain/entities/delivery_stats.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/order.dart';
-import 'package:ninzo_rider/features/orders/domain/usecases/accept_order.dart';
-import 'package:ninzo_rider/features/orders/domain/usecases/deliver_order.dart';
-import 'package:ninzo_rider/features/orders/domain/usecases/rank_offers.dart';
-import 'package:ninzo_rider/features/orders/domain/usecases/watch_open_orders.dart';
 
 import 'fakes.dart';
 
@@ -112,76 +106,6 @@ void main() {
     expect(await restore(), isFalse);
   });
 
-  test('DeliverOrder checks the code length, then the code', () async {
-    final deliver = DeliverOrder(FakeOrderRepository());
-    final order = testOrder();
-
-    await expectLater(
-      deliver(order, '12'),
-      throwsA(isA<AppException>()),
-    );
-    await expectLater(
-      deliver(order, '0000'),
-      throwsA(isA<AppException>()),
-    );
-    await deliver(order, ' $testDeliveryCode ');
-  });
-
-  test('AcceptOrder fails when another rider was faster', () {
-    final rider = Fakes().riderApplication(RegistrationStatus.approved);
-    expect(
-      AcceptOrder(FakeOrderRepository())(testOrder(), rider: rider),
-      throwsA(isA<AppException>()),
-    );
-  });
-
-  test('RankOffers drops skipped and far orders, nearest first', () {
-    final near = testOrder(id: 'near');
-    final far = Order(
-      id: 'far',
-      orderNumber: '1',
-      restaurant: const OrderContact(
-        name: 'Far',
-        phone: '',
-        address: '',
-        point: LatLng(28.70, 77.30),
-      ),
-      customer: customer,
-      items: const [],
-      total: 0,
-      paymentMode: PaymentMode.prepaid,
-      riderFee: 20,
-      status: OrderStatus.ready,
-      createdAt: DateTime.now(),
-    );
-    const rank = RankOffers();
-
-    final offers = rank(
-      [far, near, testOrder(id: 'skipped')],
-      from: riderPoint,
-      skipped: {'skipped'},
-    );
-    expect(offers.map((o) => o.order.id), ['near']);
-    expect(offers.single.kmToRestaurant, lessThan(0.1));
-
-    // Without a position nothing can be ruled out by distance.
-    expect(rank([far, near]).length, 2);
-  });
-
-  test('WatchOpenOrders leaves out abandoned orders', () async {
-    final now = DateTime.now();
-    final repo = FakeOrderRepository()
-      ..open.value = [testOrder(id: 'a'), testOrder(id: 'b')];
-    final later = now.add(WatchOpenOrders.maxAge + const Duration(minutes: 1));
-    final fresh = WatchOpenOrders(
-      repo,
-      () => later.subtract(const Duration(minutes: 2)),
-    );
-    final stale = WatchOpenOrders(repo, () => later);
-    expect((await fresh().first).length, 2);
-    expect(await stale().first, isEmpty);
-  });
-
   test('StartRegistration stops at a number that is already a rider, else signs in without a code', () async {
     final auth = FakeAuthRepository();
     final directory = FakeRiderDirectory();
@@ -230,8 +154,8 @@ void main() {
     expect(users.user.value?.name, 'Ravi Kumar');
   });
 
-  test('SearchAreas: popular when empty, matches with prefixes first, nothing for nonsense', () async {
-    final search = SearchAreas(FakeAreaRepository());
+  test('SearchAreas: popular when empty, places when typed, nothing for nonsense', () async {
+    final search = SearchAreas(FakeAreaRepository(), FakePlaceRepository());
     expect((await search('')).map((a) => a.name), [
       'Yelahanka', 'Bagalur', 'Jakkur', 'Hebbal', 'Devanahalli', 'Kogilu', //
     ]);
@@ -249,11 +173,11 @@ void main() {
     () async {
       final near = _FixedLocation(const LatLng(13.1010, 77.5960));
       expect(
-        (await FindAreaNearMe(FakeAreaRepository(), near)()).name,
+        (await FindAreaNearMe(FakePlaceRepository(), near)()).name,
         'Yelahanka',
       );
       await expectLater(
-        FindAreaNearMe(FakeAreaRepository(), FakeLocationRepository())(),
+        FindAreaNearMe(FakePlaceRepository(), FakeLocationRepository())(),
         throwsA(
           isA<RegisterFailure>().having(
             (e) => e.kind,
@@ -314,24 +238,6 @@ void main() {
     },
   );
 
-  test('Stats count cash to hand over and pick out one day', () {
-    final day = DateTime(2026, 1, 1, 12);
-    final stats = DeliveryStats.onDay([
-      testOrder(
-        pickedUpAt: day,
-        deliveredAt: day.add(const Duration(seconds: 60)),
-      ),
-      testOrder(
-        paymentMode: PaymentMode.prepaid,
-        pickedUpAt: day,
-        deliveredAt: day.add(const Duration(seconds: 60)),
-      ),
-      testOrder(pickedUpAt: day, deliveredAt: day.add(const Duration(days: 1))),
-    ], day);
-    expect(stats.deliveries, 2);
-    expect(stats.cashCollected, 249);
-    expect(stats.earnings, 50);
-  });
 }
 
 class _FixedLocation extends FakeLocationRepository {

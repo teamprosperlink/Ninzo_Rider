@@ -5,70 +5,60 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:ninzo_rider/app/app.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/auth_failure.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/rider_account_info.dart';
-import 'package:ninzo_rider/features/auth/domain/repositories/rider_directory.dart';
-import 'package:ninzo_rider/features/auth/domain/repositories/session_repository.dart';
-import 'package:ninzo_rider/features/intro/di/intro_di.dart';
-import 'package:ninzo_rider/features/intro/domain/entities/app_permission.dart';
-import 'package:ninzo_rider/features/intro/domain/repositories/intro_repository.dart';
-import 'package:ninzo_rider/features/intro/domain/repositories/permission_repository.dart';
-import 'package:ninzo_rider/features/account/domain/entities/app_user.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/auth_user.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/otp_request.dart';
-import 'package:ninzo_rider/features/orders/data/repositories/demo_delivery_repository.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/delivery_order.dart';
-import 'package:ninzo_rider/features/orders/data/repositories/local_handover_stores.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/handover.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/problem_report.dart';
-import 'package:ninzo_rider/features/orders/domain/repositories/handover_repository.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/order.dart';
-import 'package:ninzo_rider/features/orders/domain/repositories/delivery_repository.dart';
-import 'package:ninzo_rider/features/orders/presentation/widgets/gate_scanner.dart';
-import 'package:ninzo_rider/features/auth/domain/repositories/auth_repository.dart';
-import 'package:ninzo_rider/features/location/domain/repositories/location_repository.dart';
-import 'package:ninzo_rider/features/orders/domain/repositories/order_repository.dart';
-import 'package:ninzo_rider/core/di/clock_provider.dart';
-import 'package:ninzo_rider/features/profile/di/profile_di.dart';
-import 'package:ninzo_rider/features/profile/domain/entities/profile.dart';
-import 'package:ninzo_rider/features/profile/domain/repositories/profile_repository.dart';
-import 'package:ninzo_rider/features/account/di/account_di.dart';
-import 'package:ninzo_rider/features/auth/di/auth_di.dart';
-import 'package:ninzo_rider/features/location/di/location_di.dart';
-import 'package:ninzo_rider/features/orders/di/orders_di.dart';
-import 'package:ninzo_rider/features/register/di/register_di.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_area.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_document.dart';
-import 'package:ninzo_rider/features/register/domain/repositories/area_repository.dart';
-import 'package:ninzo_rider/features/register/domain/repositories/photo_source.dart';
-import 'package:ninzo_rider/features/register/domain/repositories/registration_repository.dart';
-import 'package:ninzo_rider/features/account/domain/repositories/user_repository.dart';
-import 'package:ninzo_rider/features/shift/data/repositories/route_repositories.dart';
-import 'package:ninzo_rider/core/error/app_exception.dart';
-import 'package:ninzo_rider/features/online/data/repositories/demo_rider_location.dart';
-import 'package:ninzo_rider/features/online/di/online_di.dart';
-import 'package:ninzo_rider/features/online/domain/entities/online_status.dart';
-import 'package:ninzo_rider/features/online/domain/entities/spot_option.dart';
-import 'package:ninzo_rider/features/online/domain/repositories/online_repository.dart';
-import 'package:ninzo_rider/features/online/domain/repositories/spot_choice_repository.dart';
-import 'package:ninzo_rider/features/refill/domain/entities/restock.dart';
-import 'package:ninzo_rider/features/shift/di/shift_di.dart';
-import 'package:ninzo_rider/features/shift_end/di/shift_end_di.dart';
-import 'package:ninzo_rider/features/shift_end/domain/entities/shift_end.dart';
-import 'package:ninzo_rider/features/shift_end/domain/repositories/shift_end_repositories.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift_push.dart';
-import 'package:ninzo_rider/features/shift/domain/repositories/device_status_repository.dart';
-import 'package:ninzo_rider/features/shift/domain/repositories/shift_notifier.dart';
-import 'package:ninzo_rider/features/shift/domain/repositories/shift_repository.dart';
-import 'package:ninzo_rider/features/shift/domain/usecases/plan_shift_pushes.dart';
-import 'package:ninzo_rider/features/stock/data/repositories/local_stock_stores.dart';
-import 'package:ninzo_rider/features/stock/di/stock_di.dart';
-import 'package:ninzo_rider/features/stock/domain/entities/stock.dart';
-import 'package:ninzo_rider/features/stock/domain/repositories/stock_repository.dart';
-import 'package:ninzo_rider/features/stock/presentation/widgets/stock_scanner.dart';
+import 'package:ninzo_rider/presentation/app/views/app.dart';
+import 'package:ninzo_rider/domain/entities/auth_failure.dart';
+import 'package:ninzo_rider/domain/entities/rider_account_info.dart';
+import 'package:ninzo_rider/domain/repositories/rider_directory.dart';
+import 'package:ninzo_rider/domain/repositories/session_repository.dart';
+import 'package:ninzo_rider/injection_container.dart';
+import 'package:ninzo_rider/domain/entities/app_permission.dart';
+import 'package:ninzo_rider/domain/repositories/intro_repository.dart';
+import 'package:ninzo_rider/domain/repositories/permission_repository.dart';
+import 'package:ninzo_rider/domain/entities/app_user.dart';
+import 'package:ninzo_rider/domain/entities/auth_user.dart';
+import 'package:ninzo_rider/domain/entities/otp_request.dart';
+import 'package:ninzo_rider/data/repositories/demo_delivery_repository.dart';
+import 'package:ninzo_rider/domain/entities/delivery_order.dart';
+import 'package:ninzo_rider/data/datasources/local/local_handover_stores.dart';
+import 'package:ninzo_rider/domain/entities/handover.dart';
+import 'package:ninzo_rider/domain/entities/problem_report.dart';
+import 'package:ninzo_rider/domain/repositories/handover_repository.dart';
+import 'package:ninzo_rider/domain/entities/order.dart';
+import 'package:ninzo_rider/domain/repositories/delivery_repository.dart';
+import 'package:ninzo_rider/presentation/orders/widgets/gate_scanner.dart';
+import 'package:ninzo_rider/domain/repositories/auth_repository.dart';
+import 'package:ninzo_rider/domain/repositories/location_repository.dart';
+import 'package:ninzo_rider/core/utils/clock_provider.dart';
+import 'package:ninzo_rider/domain/entities/profile.dart';
+import 'package:ninzo_rider/domain/repositories/profile_repository.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/rider_area.dart';
+import 'package:ninzo_rider/domain/entities/rider_document.dart';
+import 'package:ninzo_rider/domain/repositories/area_repository.dart';
+import 'package:ninzo_rider/domain/repositories/place_repository.dart';
+import 'package:ninzo_rider/domain/repositories/photo_source.dart';
+import 'package:ninzo_rider/domain/repositories/registration_repository.dart';
+import 'package:ninzo_rider/domain/repositories/user_repository.dart';
+import 'package:ninzo_rider/data/repositories/route_repositories.dart';
+import 'package:ninzo_rider/core/errors/app_exception.dart';
+import 'package:ninzo_rider/data/repositories/demo_rider_location.dart';
+import 'package:ninzo_rider/domain/entities/online_status.dart';
+import 'package:ninzo_rider/domain/entities/spot_option.dart';
+import 'package:ninzo_rider/domain/repositories/online_repository.dart';
+import 'package:ninzo_rider/domain/repositories/spot_choice_repository.dart';
+import 'package:ninzo_rider/domain/entities/restock.dart';
+import 'package:ninzo_rider/domain/entities/shift_end.dart';
+import 'package:ninzo_rider/domain/repositories/shift_end_repositories.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
+import 'package:ninzo_rider/domain/entities/shift_push.dart';
+import 'package:ninzo_rider/domain/repositories/device_status_repository.dart';
+import 'package:ninzo_rider/domain/repositories/shift_notifier.dart';
+import 'package:ninzo_rider/domain/repositories/shift_repository.dart';
+import 'package:ninzo_rider/domain/usecases/plan_shift_pushes.dart';
+import 'package:ninzo_rider/data/datasources/local/local_stock_stores.dart';
+import 'package:ninzo_rider/domain/entities/stock.dart';
+import 'package:ninzo_rider/domain/repositories/stock_repository.dart';
+import 'package:ninzo_rider/presentation/stock/widgets/stock_scanner.dart';
 
 /// A value whose stream emits the current value, then every change.
 class Watched<T> {
@@ -91,47 +81,7 @@ class Watched<T> {
 }
 
 const testOtp = '123456';
-const testDeliveryCode = '4321';
 const riderPoint = LatLng(28.6139, 77.2090);
-
-const kitchen = OrderContact(
-  name: 'Ninzo Kitchen',
-  phone: '+911100000000',
-  address: 'Janpath, New Delhi',
-  point: LatLng(28.6142, 77.2093),
-);
-const customer = OrderContact(
-  name: 'Priya',
-  phone: '+919999999999',
-  address: 'Tower B, Janpath Residency',
-  point: LatLng(28.6150, 77.2101),
-);
-
-Order testOrder({
-  String id = 'o1',
-  OrderStatus status = OrderStatus.ready,
-  String? riderId,
-  DateTime? pickedUpAt,
-  DateTime? deliveredAt,
-  PaymentMode paymentMode = PaymentMode.cash,
-}) => Order(
-  id: id,
-  orderNumber: '1042',
-  restaurant: kitchen,
-  customer: customer,
-  items: const [
-    OrderItem(name: 'Paneer roll', quantity: 2),
-    OrderItem(name: 'Masala chai', quantity: 1),
-  ],
-  total: 249,
-  paymentMode: paymentMode,
-  riderFee: 25,
-  status: status,
-  createdAt: DateTime.now(),
-  riderId: riderId,
-  pickedUpAt: pickedUpAt,
-  deliveredAt: deliveredAt,
-);
 
 class FakeAuthRepository implements AuthRepository {
   final user = Watched<AuthUser?>(null);
@@ -429,6 +379,33 @@ class FakeAreaRepository implements AreaRepository {
   Future<List<RiderArea>> all() async => testAreas;
 }
 
+/// Stands in for Google: finds [testAreas] by name.
+class FakePlaceRepository implements PlaceRepository {
+  @override
+  Future<List<RiderArea>> search(String query) async {
+    final q = query.toLowerCase();
+    return testAreas.where((a) => a.name.toLowerCase().contains(q)).toList();
+  }
+
+  @override
+  Future<RiderArea> details(RiderArea area) async => area;
+
+  @override
+  Future<RiderArea?> near(LatLng point) async {
+    const distance = Distance();
+    RiderArea? best;
+    var bestKm = 25.0;
+    for (final area in testAreas) {
+      final km = distance.as(LengthUnit.Kilometer, point, LatLng(area.latitude!, area.longitude!));
+      if (km <= bestKm) {
+        best = area;
+        bestKm = km;
+      }
+    }
+    return best;
+  }
+}
+
 /// Hands back [path] instead of opening the camera (null = cancelled).
 class FakePhotoSource implements PhotoSource {
   String? path = '/nonexistent/photo.jpg';
@@ -452,33 +429,6 @@ class FakePhotoSource implements PhotoSource {
 
   @override
   Future<String?> pickFromGallery() => _pick();
-}
-
-/// In-memory orders following the same steps the security rules allow.
-class FakeOrderRepository implements OrderRepository {
-  final open = Watched<List<Order>>(const []);
-  final history = Watched<List<Order>>(const []);
-
-  @override
-  Stream<List<Order>> watchOpenOrders() => open.stream;
-
-  @override
-  Stream<List<Order>> watchHistory(String riderId) => history.stream;
-
-  @override
-  Future<bool> acceptOrder(
-    String orderId, {
-    required String riderId,
-    required RiderInfo rider,
-  }) async {
-    final order = open.value.where((o) => o.id == orderId).firstOrNull;
-    if (order == null) return false;
-    open.value = open.value.where((o) => o.id != orderId).toList();
-    return true;
-  }
-
-  @override
-  Future<bool> markDelivered(String orderId, String code) async => code == testDeliveryCode;
 }
 
 /// The order A2931 at Gate 3, as on the designs.
@@ -1021,7 +971,6 @@ class Fakes {
   final users = FakeUserRepository();
   final registration = FakeRegistrationRepository();
   final photos = FakePhotoSource();
-  final orders = FakeOrderRepository();
   final delivery = FakeDeliveryRepository();
   final problemReports = FakeProblemReports();
 
@@ -1135,11 +1084,13 @@ Future<Fakes> pumpApp(WidgetTester tester, [Fakes? fakes]) async {
         introRepositoryProvider.overrideWithValue(fakes.intro),
         permissionRepositoryProvider.overrideWithValue(fakes.permissions),
         splashDurationProvider.overrideWithValue(fakes.splash),
+        // No Android process to ask in a test.
+        timeSinceAppStartProvider.overrideWithValue(() async => Duration.zero),
         userRepositoryProvider.overrideWithValue(fakes.users),
         registrationRepositoryProvider.overrideWithValue(fakes.registration),
         areaRepositoryProvider.overrideWithValue(FakeAreaRepository()),
+        placeRepositoryProvider.overrideWithValue(FakePlaceRepository()),
         photoSourceProvider.overrideWithValue(fakes.photos),
-        orderRepositoryProvider.overrideWithValue(fakes.orders),
         locationRepositoryProvider.overrideWithValue(FakeLocationRepository()),
       ],
       child: const NinzoRiderApp(),

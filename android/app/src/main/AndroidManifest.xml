@@ -8,10 +8,14 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Back goes through the app (enableOnBackInvokedCallback false): on its
+         first screen MainActivity sends it to the background instead of
+         closing it, so reopening never shows a blank launch screen. -->
     <application
-        android:label="NinzoRider"
+        android:label="Ninzo Rider"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -46,6 +50,20 @@
             </intent-filter>
         </receiver>
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+        <!-- Shift pushes with the app's own buttons (ShiftPushes.kt): due, and after a reboot. -->
+        <receiver android:exported="false" android:name=".ShiftPushReceiver" />
+        <receiver android:exported="false" android:name=".ShiftPushBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+        <meta-data
+            android:name="ninzo.STAGING_API_URL"
+            android:value="${STAGING_API_URL}" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

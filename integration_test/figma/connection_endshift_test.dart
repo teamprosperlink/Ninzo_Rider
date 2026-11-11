@@ -7,12 +7,12 @@ import 'package:integration_test/integration_test.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ninzo_rider/features/online/domain/entities/online_status.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
-import 'package:ninzo_rider/features/shift/presentation/viewmodels/shift_flow_view_model.dart';
-import 'package:ninzo_rider/features/shift_end/domain/entities/shift_end.dart';
-import 'package:ninzo_rider/features/stock/domain/entities/stock.dart';
+import 'package:ninzo_rider/domain/entities/online_status.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
+import 'package:ninzo_rider/presentation/shift/viewmodels/shift_flow_view_model.dart';
+import 'package:ninzo_rider/domain/entities/shift_end.dart';
+import 'package:ninzo_rider/domain/entities/stock.dart';
 
 import '../../test/fakes.dart';
 

@@ -1,0 +1,1 @@
+enum ConfirmSpotResult { confirmed, spotFull }

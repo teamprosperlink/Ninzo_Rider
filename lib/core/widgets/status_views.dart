@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../design/rider_tokens.dart';
+import '../theme/app_theme.dart';
+import '../constants/app_durations.dart';
 
 /// Nothing to show yet: the screen's background, as no frame draws loading.
 class BlankScreen extends StatelessWidget {
@@ -17,7 +18,7 @@ class BlankScreen extends StatelessWidget {
 class SilentRetry extends StatefulWidget {
   const SilentRetry({super.key, required this.onRetry, this.child = const BlankScreen()});
 
-  static const every = Duration(seconds: 5);
+  static const every = AppDurations.seconds5;
 
   final VoidCallback onRetry;
   final Widget child;

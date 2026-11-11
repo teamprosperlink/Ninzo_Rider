@@ -5,11 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ninzo_rider/core/widgets/status_views.dart';
 import 'package:ninzo_rider/core/widgets/rider/rider_ui.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/auth_failure.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/rider_account_info.dart';
-import 'package:ninzo_rider/features/intro/domain/entities/app_permission.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_document.dart';
+import 'package:ninzo_rider/domain/entities/auth_failure.dart';
+import 'package:ninzo_rider/domain/entities/rider_account_info.dart';
+import 'package:ninzo_rider/domain/entities/app_permission.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/rider_document.dart';
 
 import 'fakes.dart';
 

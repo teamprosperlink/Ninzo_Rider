@@ -6,9 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:ninzo_rider/features/online/presentation/viewmodels/choose_spot_view_model.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
+import 'package:ninzo_rider/presentation/online/viewmodels/choose_spot_view_model.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
 
 import '../../test/fakes.dart';
 

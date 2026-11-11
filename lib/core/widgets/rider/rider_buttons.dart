@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
 import 'rider_text.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_sizes.dart';
+import '../../constants/app_numbers.dart';
 
 enum RiderButtonStyle {
   /// Green fill, white text (Button/Fill/Primary). Disabled: lighter green.
@@ -91,42 +94,42 @@ class RiderButton extends StatelessWidget {
         RiderColors.white,
         null,
       ),
-      RiderButtonStyle.secondary => (Colors.transparent, RiderColors.brand, RiderColors.brand),
-      RiderButtonStyle.ghost => (Colors.transparent, RiderColors.grey, null),
+      RiderButtonStyle.secondary => (RiderColors.transparent, RiderColors.brand, RiderColors.brand),
+      RiderButtonStyle.ghost => (RiderColors.transparent, RiderColors.grey, null),
       RiderButtonStyle.tinted => (RiderColors.brandTint, RiderColors.brand, null),
       RiderButtonStyle.inverse => (RiderColors.white, RiderColors.ink, null),
-      RiderButtonStyle.inverseOutline => (Colors.transparent, RiderColors.white, RiderColors.white),
-      RiderButtonStyle.danger => (Colors.transparent, RiderColors.error, RiderColors.error),
+      RiderButtonStyle.inverseOutline => (RiderColors.transparent, RiderColors.white, RiderColors.white),
+      RiderButtonStyle.danger => (RiderColors.transparent, RiderColors.error, RiderColors.error),
     };
     final faded = dimmed || (onPressed == null && style != RiderButtonStyle.primary);
     return Opacity(
-      opacity: faded ? 0.5 : 1,
+      opacity: faded ? AppOpacity.o0_5 : AppOpacity.o1,
       child: SizedBox(
         width: double.infinity,
-        height: style == RiderButtonStyle.ghost ? 48 : 56,
+        height: style == RiderButtonStyle.ghost ? AppSizes.s48 : AppSizes.s56,
         child: Material(
           color: fill,
-          shape: StadiumBorder(side: border == null ? BorderSide.none : BorderSide(color: border, width: 1.5)),
+          shape: StadiumBorder(side: border == null ? BorderSide.none : BorderSide(color: border, width: AppSizes.s1_5)),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: enabled ? onPressed : null,
             child: Center(
               child: loading && loadingLabel == null
-                  ? SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: text))
+                  ? SizedBox.square(dimension: AppSizes.s22, child: CircularProgressIndicator(strokeWidth: AppSizes.s2_5, color: text))
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (loading) ...[
                           // The stroke paints 20 across, in the design's 20 box 8 from the label.
-                          const SizedBox(width: 1),
-                          SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2, color: text)),
-                          const SizedBox(width: 9),
+                          const SizedBox(width: AppSizes.s1),
+                          SizedBox.square(dimension: AppSizes.s18, child: CircularProgressIndicator(strokeWidth: AppSizes.s2, color: text)),
+                          const SizedBox(width: AppSizes.s9),
                         ] else if (leading != null) ...[
                           leading!,
-                          const SizedBox(width: 10),
+                          const SizedBox(width: AppSizes.s10),
                         ] else if (icon != null) ...[
-                          Icon(icon, color: text, size: 20),
-                          const SizedBox(width: 8),
+                          Icon(icon, color: text, size: AppSizes.s20),
+                          const SizedBox(width: AppSizes.s8),
                         ],
                         Flexible(
                           child: RiderHugText(
@@ -152,7 +155,7 @@ class RiderBackButton extends StatelessWidget {
     super.key,
     this.onPressed,
     this.icon = Icons.arrow_back,
-    this.size = 44,
+    this.size = AppSizes.s44,
     this.bordered = false,
     this.label,
     this.softShadow = false,
@@ -172,26 +175,26 @@ class RiderBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: label ?? (icon == Icons.close ? 'Close' : 'Back'),
+      label: label ?? (icon == Icons.close ? AppStrings.close : AppStrings.back),
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: RiderColors.white,
           boxShadow: softShadow
-              ? const [BoxShadow(color: Color(0x0D0C0C0C), offset: Offset(0, 2), blurRadius: 2.6)]
+              ? RiderLayout.inkFaintShadow2x2_6
               : (bordered ? null : riderShadow),
           border: bordered ? Border.all(color: RiderColors.track) : null,
         ),
         child: Material(
-          color: Colors.transparent,
+          color: RiderColors.transparent,
           shape: const CircleBorder(),
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: onPressed ?? () => Navigator.maybePop(context),
             // The border takes 1px on each side; the circle stays [size].
             child: SizedBox.square(
-              dimension: bordered ? size - 2 : size,
-              child: Icon(icon, size: 24, color: RiderColors.ink),
+              dimension: bordered ? size - AppSizes.s2 : size,
+              child: Icon(icon, size: AppSizes.s24, color: RiderColors.ink),
             ),
           ),
         ),
@@ -207,7 +210,7 @@ class RiderLink extends StatelessWidget {
     super.key,
     required this.onPressed,
     this.style,
-    this.padding = const EdgeInsets.symmetric(vertical: 4),
+    this.padding = const EdgeInsets.symmetric(vertical: AppSizes.s4),
   });
 
   final String label;

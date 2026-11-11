@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The splash's green (RiderColors.brand), so the system's launch screen
+         looks like the app's own splash. -->
+    <color name="splash_background">#FF009600</color>
+    <!-- Shift pushes, as the app's notification card (Figma Notification 05):
+         title RiderColors.ink, message RiderColors.grey. -->
+    <color name="push_title">#FF0C0C0C</color>
+    <color name="push_body">#FF767676</color>
+</resources>

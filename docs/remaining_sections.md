@@ -13,7 +13,7 @@ All 168 frames are built, the 162 before plus Section 24's 6: Sections 8, 9 and 
 
 Not built, by decision: 23 Offer (on hold).
 
-Section 24 Choose a spot (Shift 13–18) is built in `lib/features/online/` as one screen, `ChooseSpotPage` and `ChooseSpotViewModel`, reached only by the amber **Demo: Choose a spot** pill. The backend still assigns the spot in the real flow: the flow map has no arrow into Shift 13, and its title still says "pending: backend assigns". Outside demo the repository is `NoSpotChoices`, with no backend behind it.
+Section 24 Choose a spot (Shift 13–18) is built in `lib/presentation/online/` as one screen, `ChooseSpotPage` and `ChooseSpotViewModel`, reached only by the amber **Demo: Choose a spot** pill. The backend still assigns the spot in the real flow: the flow map has no arrow into Shift 13, and its title still says "pending: backend assigns". Outside demo the repository is `NoSpotChoices`, with no backend behind it.
 
 ## User's rules
 - Everything as in Figma: colour, size, spacing, radius, shadow, copy. Figma wins.
@@ -23,18 +23,18 @@ Section 24 Choose a spot (Shift 13–18) is built in `lib/features/online/` as o
 
 ## How each section was built
 - Use the Flow Map (`128717:2188`) to group frames into real screens and to find where buttons lead. Each real screen is one View and ViewModel; every frame still gets its own screenshot.
-- Clean Architecture + MVVM: `domain` (entities, use cases with the rules, repository interfaces), `data` (Firestore and demo repositories, models), `di`, `presentation`. Only `di` imports `data`.
+- Clean Architecture + MVVM: `domain` (entities, use cases with the rules, repository interfaces), `data` (Firestore and demo repositories, models), `presentation`, in `lib/domain`, `lib/data` and `lib/presentation/<feature>`. Only `lib/injection_container.dart` imports `data`.
 - Demo mode (`kDemoMode`): every state reachable on the phone, with short timers and amber "Demo: …" pills hidden outside demo. Keep the pills out of test screenshots. Document states in the README.
 - Add an on-device suite under `integration_test/figma/` driving all frames with fakes, named from the Figma titles, keyboard down. Compare each with its frame using side-by-side images.
-- Measure rendered colours from the Figma screenshot, because `get_design_context` drops opacity. Shadow blur: see the note in `rider_tokens.dart`. Use opaque fills over a BoxShadow.
+- Measure rendered colours from the Figma screenshot, because `get_design_context` drops opacity. Shadow blur: see the note in `app_theme.dart`. Use opaque fills over a BoxShadow.
 - Before calling a section done: `flutter analyze` clean, `flutter test` green, all device suites one at a time on final code, and a walk of the real demo app, reading its results. Leave no background scripts; leave the demo build on Welcome.
 
 ## Where the new sections plug in
 - A rider with no shift sees Shift 02 (`NoShiftHomePage`, `home_page.dart`), with Spot and Scooter blank; its button and avatar do nothing until a shift arrives.
-- Section 9 is in `lib/features/shift_end/`. Earnings 01 and Sync 01 have no flow-map arrow into them, and Profile has none either.
-- `lib/features/online/`: low-stock "Request hub to prepare", Take a break, Go offline.
-- `lib/features/stock/`: reuse the scan flow for refills.
-- Section 10 is in `lib/features/profile/`. The avatar on Home opens Profile 01; `AppDrawer` and `profile_view` are gone. Profile 09 "Report a problem" opens `ProblemReportPage`, but a rider on the way still can't reach it: no frame of an order draws an avatar, and an active order takes over the screen. Designer to decide.
+- Section 9 is in `lib/presentation/shift_end/`. Earnings 01 and Sync 01 have no flow-map arrow into them, and Profile has none either.
+- `lib/presentation/online/`: low-stock "Request hub to prepare", Take a break, Go offline.
+- `lib/presentation/stock/`: reuse the scan flow for refills.
+- Section 10 is in `lib/presentation/profile/`. The avatar on Home opens Profile 01; `AppDrawer` and `profile_view` are gone. Profile 09 "Report a problem" opens `ProblemReportPage`, but a rider on the way still can't reach it: no frame of an order draws an avatar, and an active order takes over the screen. Designer to decide.
 
 ## Open for the user
 User's decision on 2026-11-05: whatever isn't in Figma comes out of the app. Done the same day: no snackbars, error screens, full-screen spinners or fallback text remain. A failed action leaves the screen as it was, with no message; a load with nothing to go back to shows blank and retries by itself (`SilentRetry`). `AppException` is never shown. Designer to draw frames where the rider now gets no answer: Go online or stock confirm without signal, checklist items that won't tick, a failed save or send anywhere. Still waiting for the user's answer: demo-only pills, the Shift 44 progress bar, invented routing behind drawn buttons.

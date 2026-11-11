@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- Before the first frame (Android 11 and older): the splash's green with the
+     Ninzo mark where the splash draws it, 54dp above the middle. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="?android:colorBackground" />
-
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    <item android:drawable="@color/splash_background" />
+    <item
+        android:width="104dp"
+        android:height="104dp"
+        android:bottom="108dp"
+        android:gravity="center"
+        android:drawable="@drawable/splash_logo" />
 </layer-list>

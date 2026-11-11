@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App icon foreground (Android 8+): the Ninzo mark's speed lines and "N"
+     in white, placed as on the 104dp mark scaled to the 72dp visible area. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="18" android:translateY="18" android:scaleX="0.6923" android:scaleY="0.6923">
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round"
+            android:pathData="M14.42,40.08 L26.92,40.08 M14.42,50.08 L34.92,50.08 M14.42,60.08 L24.92,60.08" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M45,76 L45,32.5 L54.2,32.5 L74.3,61.4 L74.3,32.5 L83.5,32.5 L83.5,76 L74.4,76 L54.2,47 L54.2,76 Z" />
+    </group>
+</vector>

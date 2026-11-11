@@ -2,11 +2,18 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
 import 'rider_text.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_sizes.dart';
+import '../../constants/app_keys.dart';
+import '../../constants/app_numbers.dart';
 
 /// Rounded pill with a dot and label, e.g. "● Online", "● New order assigned".
 class RiderStatusPill extends StatelessWidget {
+  /// "Added", on a document that's in.
+  static const added = RiderStatusPill.chip(AppStrings.added);
+
   const RiderStatusPill(
     this.label, {
     super.key,
@@ -19,13 +26,12 @@ class RiderStatusPill extends StatelessWidget {
 
   /// The 24px chip of the register designs ("● Added", "● Under review"):
   /// 6px dot, 4px vertical padding.
-  const RiderStatusPill.chip(this.label, {super.key, this.color = RiderColors.brand, this.textColor})
+  const RiderStatusPill.chip(this.label, {super.key, this.color = RiderColors.brand, this.textColor, this.tint})
     : dot = true,
-      tint = null,
       compact = true;
 
   /// Grey "● Offline" pill.
-  const RiderStatusPill.offline({super.key, this.label = 'Offline'})
+  const RiderStatusPill.offline({super.key, this.label = AppStrings.offline})
     : color = RiderColors.grey,
       dot = true,
       tint = null,
@@ -43,13 +49,13 @@ class RiderStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dotSize = compact ? 6.0 : 8.0;
+    final dotSize = compact ? AppSizes.s6_0 : AppSizes.s8_0;
     return Container(
       padding: compact
-          ? EdgeInsets.fromLTRB(dot ? 8 : 12, 4, 12, 4)
-          : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ? EdgeInsets.fromLTRB(dot ? AppSizes.s8 : AppSizes.s12, AppSizes.s4, AppSizes.s12, AppSizes.s4)
+          : const EdgeInsets.symmetric(horizontal: AppSizes.s12, vertical: AppSizes.s8),
       decoration: BoxDecoration(
-        color: tint ?? color.withValues(alpha: compact ? 0.123 : (color == RiderColors.grey ? 0x23 / 255 : 0.14)),
+        color: tint ?? color.withValues(alpha: compact ? AppOpacity.o0_123 : (color == RiderColors.grey ? AppOpacity.greyPill : color == RiderColors.brand ? AppOpacity.o0_12 : AppOpacity.o0_14)),
         borderRadius: BorderRadius.circular(RiderRadius.pill),
       ),
       child: Row(
@@ -61,11 +67,9 @@ class RiderStatusPill extends StatelessWidget {
               height: dotSize,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSizes.s8),
           ],
-          compact
-              ? Text(label, style: RiderText.labelSmall.copyWith(color: textColor ?? color))
-              : RiderHugText(label, style: RiderText.labelSmall.copyWith(color: textColor ?? color)),
+          RiderHugText(label, style: RiderText.labelSmall.copyWith(color: textColor ?? color)),
         ],
       ),
     );
@@ -74,7 +78,9 @@ class RiderStatusPill extends StatelessWidget {
 
 /// Circle with the rider's initial on a tinted background.
 class RiderAvatar extends StatelessWidget {
-  const RiderAvatar(this.name, {super.key, this.size = 44, this.onTap});
+  const RiderAvatar(this.name, {super.key, this.size = AppSizes.s44, this.onTap, this.tint});
+
+  final Color? tint;
 
   final String name;
   final double size;
@@ -87,12 +93,12 @@ class RiderAvatar extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(color: RiderColors.avatarTint, shape: BoxShape.circle),
+      decoration: BoxDecoration(color: tint ?? RiderColors.avatarTint, shape: BoxShape.circle),
       child: Text(
         initial,
-        style: (size >= 64
+        style: (size >= AppSizes.s64
                 ? RiderText.h4
-                : size <= 40
+                : size <= AppSizes.s40
                 ? RiderText.labelLarge
                 : RiderText.subheadingSmall)
             .copyWith(color: RiderColors.brand),
@@ -102,7 +108,7 @@ class RiderAvatar extends StatelessWidget {
         ? avatar
         : Semantics(
             button: true,
-            label: 'Profile',
+            label: AppStrings.profile,
             child: GestureDetector(onTap: onTap, child: avatar),
           );
   }
@@ -115,7 +121,7 @@ class RiderStepBars extends StatelessWidget {
     required this.total,
     required this.done,
     this.inactive = RiderColors.overlay,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSizes.s16),
   });
 
   final int total;
@@ -132,10 +138,10 @@ class RiderStepBars extends StatelessWidget {
       child: Row(
         children: [
           for (var i = 0; i < total; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
+            if (i > 0) const SizedBox(width: AppSizes.s8),
             Expanded(
               child: Container(
-                height: 4,
+                height: AppSizes.s4,
                 decoration: BoxDecoration(
                   color: i < done ? RiderColors.brand : inactive,
                   borderRadius: BorderRadius.circular(RiderRadius.pill),
@@ -164,7 +170,7 @@ class RiderProgressBar extends StatelessWidget {
       borderRadius: BorderRadius.circular(RiderRadius.pill),
       child: LinearProgressIndicator(
         value: value.clamp(0, 1),
-        minHeight: 6,
+        minHeight: AppSizes.s6,
         color: color,
         backgroundColor: track,
       ),
@@ -180,7 +186,7 @@ class RiderCountdownRing extends StatelessWidget {
     required this.caption,
     required this.progress,
     this.color = RiderColors.brand,
-    this.size = 96,
+    this.size = AppSizes.s96,
   });
 
   /// e.g. "1:30".
@@ -203,15 +209,15 @@ class RiderCountdownRing extends StatelessWidget {
         // "Almost" (Order 03) is wider than the ring: it runs over both sides,
         // as designed.
         child: OverflowBox(
-          minWidth: 0,
-          minHeight: 0,
+          minWidth: AppSizes.s0,
+          minHeight: AppSizes.s0,
           maxWidth: size * 2,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 label,
-                key: const Key('countdown'),
+                key: const Key(AppKeys.countdown),
                 style: RiderText.metricLarge.copyWith(color: RiderColors.ink),
               ),
               Text(caption, style: RiderText.labelSmall.copyWith(color: RiderColors.grey)),
@@ -231,7 +237,7 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 4.8;
+    const stroke = AppSizes.s4_8;
     final rect = Offset.zero & size;
     final arc = rect.deflate(stroke / 2);
     canvas.drawArc(
@@ -240,7 +246,7 @@ class _RingPainter extends CustomPainter {
       math.pi * 2,
       false,
       Paint()
-        ..color = RiderColors.grey.withValues(alpha: 0.14)
+        ..color = RiderColors.grey.withValues(alpha: AppOpacity.o0_14)
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke,
     );
@@ -262,7 +268,7 @@ class _RingPainter extends CustomPainter {
 
 /// Round check used in checklists and permission benefit rows.
 class RiderCheckCircle extends StatelessWidget {
-  const RiderCheckCircle({super.key, required this.checked, this.size = 24});
+  const RiderCheckCircle({super.key, required this.checked, this.size = AppSizes.s24});
 
   final bool checked;
   final double size;
@@ -274,10 +280,10 @@ class RiderCheckCircle extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: checked ? RiderColors.brand : Colors.transparent,
-        border: checked ? null : Border.all(color: RiderColors.divider, width: 1.5),
+        color: checked ? RiderColors.brand : RiderColors.transparent,
+        border: checked ? null : Border.all(color: RiderColors.divider, width: AppSizes.s1_5),
       ),
-      child: checked ? Icon(Icons.check, size: size * 0.7, color: RiderColors.white) : null,
+      child: checked ? Icon(Icons.check, size: size * AppSizes.s0_7, color: RiderColors.white) : null,
     );
   }
 }
@@ -302,26 +308,26 @@ class RiderNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSizes.s12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: AppOpacity.o0_1),
         borderRadius: BorderRadius.circular(RiderRadius.m),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
+          Icon(icon, color: color, size: AppSizes.s20),
+          const SizedBox(width: AppSizes.s12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: RiderText.labelLarge.copyWith(height: 20 / 14)),
+                Text(title, style: RiderText.labelLargeTight),
                 if (message != null) Text(message!, style: RiderText.caption),
               ],
             ),
           ),
-          if (action != null) ...[const SizedBox(width: 8), action!],
+          if (action != null) ...[const SizedBox(width: AppSizes.s8), action!],
         ],
       ),
     );

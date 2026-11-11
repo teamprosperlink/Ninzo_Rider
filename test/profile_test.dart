@@ -3,17 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:ninzo_rider/app/app.dart';
+import 'package:ninzo_rider/presentation/app/views/app.dart';
 import 'package:ninzo_rider/core/widgets/rider/rider_status.dart';
-import 'package:ninzo_rider/features/online/domain/entities/online_status.dart';
-import 'package:ninzo_rider/features/online/domain/usecases/plan_online_pushes.dart';
-import 'package:ninzo_rider/features/profile/domain/entities/profile.dart';
-import 'package:ninzo_rider/features/profile/domain/usecases/profile_usecases.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_document.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift_push.dart';
-import 'package:ninzo_rider/features/shift/presentation/viewmodels/shift_flow_view_model.dart';
+import 'package:ninzo_rider/domain/entities/online_status.dart';
+import 'package:ninzo_rider/domain/usecases/plan_online_pushes.dart';
+import 'package:ninzo_rider/domain/entities/profile.dart';
+import 'package:ninzo_rider/domain/usecases/profile_usecases.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/rider_document.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
+import 'package:ninzo_rider/domain/entities/shift_push.dart';
+import 'package:ninzo_rider/presentation/shift/viewmodels/shift_flow_view_model.dart';
 
 import 'fakes.dart';
 

@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:ninzo_rider/core/error/app_exception.dart';
+import 'package:ninzo_rider/core/errors/app_exception.dart';
 import 'package:ninzo_rider/core/utils/formatters.dart';
-import 'package:ninzo_rider/features/online/domain/entities/online_status.dart';
-import 'package:ninzo_rider/features/online/domain/usecases/break_usecases.dart';
-import 'package:ninzo_rider/features/online/domain/usecases/online_usecases.dart';
-import 'package:ninzo_rider/features/online/domain/usecases/relocation_usecases.dart';
-import 'package:ninzo_rider/features/refill/domain/entities/restock.dart';
-import 'package:ninzo_rider/features/refill/domain/usecases/refill_usecases.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
+import 'package:ninzo_rider/domain/entities/online_status.dart';
+import 'package:ninzo_rider/domain/usecases/break_usecases.dart';
+import 'package:ninzo_rider/domain/usecases/online_usecases.dart';
+import 'package:ninzo_rider/domain/usecases/relocation_usecases.dart';
+import 'package:ninzo_rider/domain/entities/restock.dart';
+import 'package:ninzo_rider/domain/usecases/refill_usecases.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
 
 import 'fakes.dart';
 
@@ -50,6 +50,8 @@ void main() {
       expect(RestockRules.canRemove([lines.first.withQuantity(1)], 0), isFalse);
       expect(RestockRules.headline(lines), '4 Smash Burgers');
       expect(RestockRules.headline([lines.first.withQuantity(1)]), '1 Smash Burger');
+      expect(RestockRules.pluralName('Samosa (test)', 10), 'Samosas (test)');
+      expect(RestockRules.pluralName('Fries', 3), 'Fries');
     });
 
     test('a suggestion expires; a confirmed restock does not', () {
@@ -226,7 +228,7 @@ void main() {
       expect(find.text('Time to refill'), findsOneWidget);
     });
 
-    testWidgets('Restock: Not now and Back to waiting reach the map; Ask for a restock does nothing', (tester) async {
+    testWidgets('Restock: Not now and Back to waiting reach the map; Ask for a restock starts a refill', (tester) async {
       await setSize(tester);
       final fakes = rider(
         status: const OnlineStatus(
@@ -248,10 +250,20 @@ void main() {
       );
       await settle(tester);
       expect(find.text('That suggestion ran out'), findsOneWidget);
-      await tap(tester, 'Ask for a restock');
-      expect(find.text('That suggestion ran out'), findsOneWidget);
       await tap(tester, 'Back to waiting');
       expect(find.text('Waiting for orders'), findsOneWidget);
+
+      fakes.online.status.value = fakes.online.status.value.copyWith(
+        restock: () => RestockRequest(
+          stage: RestockStage.suggested,
+          hubName: 'Hub 2',
+          lines: lines,
+          expiresAt: fakes.now!.subtract(const Duration(minutes: 1)),
+        ),
+      );
+      await settle(tester);
+      await tap(tester, 'Ask for a restock');
+      expect(find.text('Refill at Hub 2'), findsOneWidget);
     });
 
     testWidgets('Edit quantity: plus moves the number, confirm carries it to Restock 03', (tester) async {

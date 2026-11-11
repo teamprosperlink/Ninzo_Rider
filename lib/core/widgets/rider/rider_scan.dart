@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
+import '../../constants/app_strings.dart';
+import '../../constants/app_sizes.dart';
 
 /// Dark toast above the bottom bar: a green dot and a line (Stock 02, 12).
 class RiderToast extends StatelessWidget {
@@ -10,7 +12,7 @@ class RiderToast extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(AppSizes.s16),
     decoration: BoxDecoration(
       color: RiderColors.ink,
       borderRadius: BorderRadius.circular(RiderRadius.m),
@@ -19,11 +21,11 @@ class RiderToast extends StatelessWidget {
     child: Row(
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: AppSizes.s10,
+          height: AppSizes.s10,
           decoration: const BoxDecoration(color: RiderColors.brand, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSizes.s12),
         Expanded(
           child: Text(message, style: RiderText.labelMedium.copyWith(color: RiderColors.white)),
         ),
@@ -41,19 +43,19 @@ class RiderWarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
+    padding: const EdgeInsets.all(AppSizes.s12),
     decoration: BoxDecoration(color: RiderColors.warningFill, borderRadius: BorderRadius.circular(RiderRadius.m)),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.info_outline, size: 24, color: RiderColors.ink),
-        const SizedBox(width: 12),
+        const Icon(Icons.info_outline, size: AppSizes.s24, color: RiderColors.ink),
+        const SizedBox(width: AppSizes.s12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: RiderText.labelLarge),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSizes.s2),
               Text(message, style: RiderText.caption),
             ],
           ),
@@ -73,7 +75,7 @@ class RiderWarningStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s12),
     decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(RiderRadius.m)),
     child: Text(message, style: RiderText.labelMedium.copyWith(color: RiderColors.warningText)),
   );
@@ -87,7 +89,7 @@ class RiderErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s12),
     decoration: BoxDecoration(color: RiderColors.errorFill, borderRadius: BorderRadius.circular(RiderRadius.m)),
     child: Text(message, style: RiderText.labelMedium.copyWith(color: RiderColors.errorPressed)),
   );
@@ -103,23 +105,23 @@ class RiderQuantityStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(4),
+    padding: const EdgeInsets.all(AppSizes.s4),
     decoration: BoxDecoration(color: RiderColors.stepperTrack, borderRadius: BorderRadius.circular(RiderRadius.pill)),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Semantics(
           button: true,
-          label: 'Fewer',
+          label: AppStrings.fewer,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: onMinus,
             child: SizedBox.square(
-              dimension: 40,
+              dimension: AppSizes.s40,
               child: Center(
                 child: Container(
-                  width: 12,
-                  height: 2,
+                  width: AppSizes.s12,
+                  height: AppSizes.s2,
                   decoration: BoxDecoration(
                     color: RiderColors.ink,
                     borderRadius: BorderRadius.circular(RiderRadius.pill),
@@ -129,27 +131,27 @@ class RiderQuantityStepper extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSizes.s12),
         Text('$value', style: RiderText.labelLarge),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSizes.s12),
         Semantics(
           button: true,
-          label: 'More',
+          label: AppStrings.more,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: onPlus,
             child: Container(
-              width: 40,
-              height: 40,
+              width: AppSizes.s40,
+              height: AppSizes.s40,
               alignment: Alignment.center,
               decoration: const BoxDecoration(color: RiderColors.brand, shape: BoxShape.circle),
               child: const SizedBox.square(
-                dimension: 12,
+                dimension: AppSizes.s12,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    SizedBox(width: 12, height: 2, child: ColoredBox(color: RiderColors.white)),
-                    SizedBox(width: 2, height: 12, child: ColoredBox(color: RiderColors.white)),
+                    SizedBox(width: AppSizes.s12, height: AppSizes.s2, child: ColoredBox(color: RiderColors.white)),
+                    SizedBox(width: AppSizes.s2, height: AppSizes.s12, child: ColoredBox(color: RiderColors.white)),
                   ],
                 ),
               ),
@@ -168,16 +170,16 @@ class RiderTickHalo extends StatelessWidget {
     super.key,
     this.outer = RiderColors.haloOuter,
     this.inner = RiderColors.haloInner,
-    this.innerSize = 72,
-    this.iconSize = 32,
+    this.innerSize = AppSizes.s72,
+    this.iconSize = AppSizes.s32,
   }) : small = false;
 
   const RiderTickHalo.small({super.key})
     : small = true,
       outer = RiderColors.haloOuter,
       inner = RiderColors.haloInner,
-      innerSize = 72,
-      iconSize = 32;
+      innerSize = AppSizes.s72,
+      iconSize = AppSizes.s32;
 
   final bool small;
   final Color outer;
@@ -189,16 +191,16 @@ class RiderTickHalo extends StatelessWidget {
   Widget build(BuildContext context) {
     if (small) {
       return Container(
-        width: 72,
-        height: 72,
+        width: AppSizes.s72,
+        height: AppSizes.s72,
         alignment: Alignment.center,
         decoration: const BoxDecoration(color: RiderColors.haloOuter, shape: BoxShape.circle),
-        child: const Icon(Icons.check, size: 18, color: RiderColors.brand),
+        child: const Icon(Icons.check, size: AppSizes.s18, color: RiderColors.brand),
       );
     }
     return Container(
-      width: 112,
-      height: 112,
+      width: AppSizes.s112,
+      height: AppSizes.s112,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: outer, shape: BoxShape.circle),
       child: Container(
@@ -218,11 +220,11 @@ class RiderTickBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 22,
-    height: 22,
+    width: AppSizes.s22,
+    height: AppSizes.s22,
     alignment: Alignment.center,
     decoration: const BoxDecoration(color: RiderColors.brand, shape: BoxShape.circle),
-    child: const SizedBox.square(dimension: 16, child: CustomPaint(painter: _TickPainter())),
+    child: const SizedBox.square(dimension: AppSizes.s16, child: CustomPaint(painter: _TickPainter())),
   );
 }
 
@@ -233,13 +235,13 @@ class _TickPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.drawPath(
       Path()
-        ..moveTo(3.2, 8.4)
-        ..lineTo(6.6, 11.8)
-        ..lineTo(12.8, 4.6),
+        ..moveTo(AppSizes.s3_2, AppSizes.s8_4)
+        ..lineTo(AppSizes.s6_6, AppSizes.s11_8)
+        ..lineTo(AppSizes.s12_8, AppSizes.s4_6),
       Paint()
         ..color = RiderColors.white
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
+        ..strokeWidth = AppSizes.s2
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
 import 'rider_buttons.dart';
+import '../../constants/app_sizes.dart';
 
 /// Page frame used by the full-screen designs: #FBFBFB background, an
 /// optional header (back circle + title + trailing action), scrolling body
@@ -21,14 +22,14 @@ class RiderScaffold extends StatelessWidget {
     this.bottomNote,
     this.background = RiderColors.screen,
     this.scrollable = true,
-    this.bodyPadding = const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    this.bodyPadding = const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s0, AppSizes.s16, AppSizes.s16),
     this.headerPadding = RiderHeader.defaultPadding,
-    this.backSize = 44,
+    this.backSize = AppSizes.s44,
     this.backBordered = false,
-    this.bottomPadding = const EdgeInsets.fromLTRB(16, 8, 16, 16),
+    this.bottomPadding = const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s8, AppSizes.s16, AppSizes.s16),
     this.bottomDecoration,
     this.bottomMargin = EdgeInsets.zero,
-    this.bottomGap = 8,
+    this.bottomGap = AppSizes.s8,
     this.bottomToEdge = false,
   });
 
@@ -88,7 +89,7 @@ class RiderScaffold extends StatelessWidget {
     );
     final gestureBar = MediaQuery.viewPaddingOf(context).bottom;
     final actionsPadding = bottomToEdge
-        ? bottomPadding + EdgeInsets.only(bottom: gestureBar > 16 ? gestureBar - 16 : 0)
+        ? bottomPadding + EdgeInsets.only(bottom: gestureBar > AppSizes.s16 ? gestureBar - AppSizes.s16 : AppSizes.s0)
         : bottomPadding;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: riderStatusBarDark,
@@ -123,7 +124,7 @@ class RiderScaffold extends StatelessWidget {
                     children: [
                       if (bottomNote != null) ...[
                         Text(bottomNote!, textAlign: TextAlign.center, style: RiderText.caption),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSizes.s8),
                       ],
                       for (var i = 0; i < bottom.length; i++) ...[if (i > 0) SizedBox(height: bottomGap), bottom[i]],
                     ],
@@ -147,15 +148,15 @@ class RiderHeader extends StatelessWidget {
     this.backIcon = Icons.arrow_back,
     this.trailing,
     this.padding = defaultPadding,
-    this.backSize = 44,
+    this.backSize = AppSizes.s44,
     this.backBordered = false,
   });
 
-  static const defaultPadding = EdgeInsets.fromLTRB(16, 8, 16, 12);
+  static const defaultPadding = EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s8, AppSizes.s16, AppSizes.s12);
 
   /// The register and document screens: the 48px row sits right under the
   /// status bar, 16px above the content.
-  static const flowPadding = EdgeInsets.fromLTRB(16, 0, 16, 16);
+  static const flowPadding = EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s0, AppSizes.s16, AppSizes.s16);
 
   final String? title;
   final bool showBack;
@@ -175,7 +176,7 @@ class RiderHeader extends StatelessWidget {
         child: Row(
           children: [
             if (showBack) RiderBackButton(onPressed: onBack, icon: backIcon, size: backSize, bordered: backBordered),
-            if (showBack && title != null) const SizedBox(width: 16),
+            if (showBack && title != null) const SizedBox(width: AppSizes.s16),
             if (title != null)
               Expanded(
                 child: Text(title!, style: RiderText.subheadingMedium, overflow: TextOverflow.ellipsis),
@@ -208,14 +209,14 @@ class RiderTitleBlock extends StatelessWidget {
         if (overline != null) ...[
           // Flutter sets half the spacing before the first letter; Figma doesn't.
           Transform.translate(
-            offset: Offset(center ? 0 : -RiderText.overline.letterSpacing! / 2, 0),
+            offset: Offset(center ? AppSizes.s0 : -RiderText.overline.letterSpacing! / AppSizes.s2, AppSizes.s0),
             child: Text(overline!.toUpperCase(), style: RiderText.overline, textAlign: align),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSizes.s8),
         ],
         Text(title, style: RiderText.h4, textAlign: align),
         if (subtitle != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSizes.s8),
           Text(
             subtitle!,
             style: RiderText.bodyMedium.copyWith(color: RiderColors.grey),

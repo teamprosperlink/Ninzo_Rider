@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:ninzo_rider/core/error/app_exception.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/home_status.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/pre_shift_check.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift_push.dart';
-import 'package:ninzo_rider/features/shift/domain/usecases/home_status_of.dart';
-import 'package:ninzo_rider/features/shift/domain/usecases/plan_shift_pushes.dart';
-import 'package:ninzo_rider/features/shift/domain/usecases/shift_flow_usecases.dart';
-import 'package:ninzo_rider/features/shift/domain/usecases/stock_request_usecases.dart';
+import 'package:ninzo_rider/core/errors/app_exception.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/home_status.dart';
+import 'package:ninzo_rider/domain/entities/pre_shift_check.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
+import 'package:ninzo_rider/domain/entities/shift_push.dart';
+import 'package:ninzo_rider/domain/usecases/home_status_of.dart';
+import 'package:ninzo_rider/domain/usecases/plan_shift_pushes.dart';
+import 'package:ninzo_rider/domain/usecases/shift_flow_usecases.dart';
+import 'package:ninzo_rider/domain/usecases/stock_request_usecases.dart';
 
 import 'fakes.dart';
 

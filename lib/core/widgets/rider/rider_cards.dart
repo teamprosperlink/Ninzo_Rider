@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
+import '../../constants/app_sizes.dart';
+import '../../constants/app_numbers.dart';
+import '../../constants/app_strings.dart';
 
 /// White card with 20 radius and the soft shadow. Children are separated by
 /// dividers when [divided] is true.
@@ -9,7 +12,7 @@ class RiderCard extends StatelessWidget {
     super.key,
     required this.children,
     this.divided = true,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s4),
     this.color = RiderColors.white,
     this.borderColor,
   });
@@ -34,7 +37,7 @@ class RiderCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var i = 0; i < children.length; i++) ...[
-            if (divided && i > 0) const Divider(height: 1, thickness: 1, color: RiderColors.divider),
+            if (divided && i > 0) const Divider(height: AppSizes.s1, thickness: AppSizes.s1, color: RiderColors.divider),
             children[i],
           ],
         ],
@@ -45,7 +48,7 @@ class RiderCard extends StatelessWidget {
 
 /// 40px rounded square with a tinted fill and an icon (list row leading).
 class RiderIconTile extends StatelessWidget {
-  const RiderIconTile(this.icon, {super.key, this.color = RiderColors.brand, this.tint, this.size = 40});
+  const RiderIconTile(this.icon, {super.key, this.color = RiderColors.brand, this.tint, this.size = AppSizes.s40});
 
   final IconData icon;
   final Color color;
@@ -58,10 +61,10 @@ class RiderIconTile extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: tint ?? color.withValues(alpha: 0.1),
+        color: tint ?? color.withValues(alpha: AppOpacity.o0_1),
         borderRadius: BorderRadius.circular(RiderRadius.m),
       ),
-      child: Icon(icon, color: color, size: size * 0.5),
+      child: Icon(icon, color: color, size: size * AppSizes.s0_5),
     );
   }
 }
@@ -76,7 +79,7 @@ class RiderListRow extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.titleColor,
-    this.padding = const EdgeInsets.symmetric(vertical: 12),
+    this.padding = const EdgeInsets.symmetric(vertical: AppSizes.s12),
   });
 
   final Widget? leading;
@@ -93,20 +96,20 @@ class RiderListRow extends StatelessWidget {
       padding: padding,
       child: Row(
         children: [
-          if (leading != null) ...[leading!, const SizedBox(width: 12)],
+          if (leading != null) ...[leading!, const SizedBox(width: AppSizes.s12)],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: RiderText.labelLarge.copyWith(color: titleColor ?? RiderColors.ink, height: 20 / 14),
+                  style: RiderText.labelLargeTight.copyWith(color: titleColor ?? RiderColors.ink),
                 ),
-                if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle!, style: RiderText.caption)],
+                if (subtitle != null) ...[const SizedBox(height: AppSizes.s2), Text(subtitle!, style: RiderText.caption)],
               ],
             ),
           ),
-          if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+          if (trailing != null) ...[const SizedBox(width: AppSizes.s12), trailing!],
         ],
       ),
     );
@@ -126,7 +129,7 @@ class RiderKeyValueRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: AppSizes.s12),
       child: Row(
         children: [
           Expanded(
@@ -150,13 +153,13 @@ class RiderItemRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: AppSizes.s12),
       child: Row(
         children: [
           Expanded(
             child: Text(name, style: RiderText.bodyMedium.copyWith(color: RiderColors.grey)),
           ),
-          trailing ?? Text('× $quantity', style: RiderText.labelLarge),
+          trailing ?? Text(AppStrings.timesCount(quantity), style: RiderText.labelLarge),
         ],
       ),
     );
@@ -176,7 +179,7 @@ class RiderStatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSizes.s16),
       decoration: BoxDecoration(
         color: RiderColors.white,
         borderRadius: BorderRadius.circular(RiderRadius.card),
@@ -188,12 +191,12 @@ class RiderStatsCard extends StatelessWidget {
           for (final (i, (value, label)) in stats.indexed)
             _column(
               // Three columns are 98.667 wide in the design, 2px over the inner width.
-              stats.length == 3 && i < 2 ? 98.667 : null,
+              stats.length == AppLimits.threeStats && i < 2 ? AppSizes.s98_667 : null,
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(value, style: RiderText.subheadingMedium),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSizes.s2),
                   Text(label, style: RiderText.caption),
                 ],
               ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../design/rider_tokens.dart';
+import '../../theme/app_theme.dart';
 import 'rider_text.dart';
+import '../../constants/app_sizes.dart';
+import '../../constants/app_numbers.dart';
 
 /// Info icon, title and grey body on a soft fill (Refill 01, 02).
 class RiderInfoBanner extends StatelessWidget {
@@ -13,19 +15,19 @@ class RiderInfoBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(AppSizes.s16),
     decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(RiderRadius.field)),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.info_outline, size: 24, color: RiderColors.ink),
-        const SizedBox(width: 12),
+        const Icon(Icons.info_outline, size: AppSizes.s24, color: RiderColors.ink),
+        const SizedBox(width: AppSizes.s12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: RiderText.labelLarge),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSizes.s2),
               Text(message, style: RiderText.bodyMedium.copyWith(color: RiderColors.grey)),
             ],
           ),
@@ -44,7 +46,7 @@ class RiderSpreadStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(AppSizes.s16),
     decoration: BoxDecoration(
       color: RiderColors.white,
       borderRadius: BorderRadius.circular(RiderRadius.card),
@@ -59,7 +61,7 @@ class RiderSpreadStats extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               RiderHugText(value, style: RiderText.subheadingMedium),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSizes.s2),
               RiderHugText(label, style: RiderText.caption),
             ],
           ),
@@ -81,12 +83,12 @@ class RiderNudgeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(AppSizes.s16),
     decoration: BoxDecoration(
       color: RiderColors.white,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AppSizes.s24),
       border: Border.all(color: RiderColors.hairline),
-      boxShadow: const [BoxShadow(color: RiderColors.shadow, offset: Offset(0, 2), blurRadius: 2.6)],
+      boxShadow: RiderLayout.shadowShadow2x2_6,
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -96,42 +98,42 @@ class RiderNudgeBanner extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: AppSizes.s40,
+              height: AppSizes.s40,
               alignment: Alignment.center,
               decoration: BoxDecoration(color: RiderColors.nudgeTile, borderRadius: BorderRadius.circular(RiderRadius.field)),
               child: Container(
-                width: 18,
-                height: 18,
+                width: AppSizes.s18,
+                height: AppSizes.s18,
                 alignment: Alignment.center,
                 decoration: const BoxDecoration(color: RiderColors.brand, shape: BoxShape.circle),
                 child: Container(
-                  width: 6,
-                  height: 6,
+                  width: AppSizes.s6,
+                  height: AppSizes.s6,
                   decoration: const BoxDecoration(color: RiderColors.white, shape: BoxShape.circle),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.s12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: RiderText.labelLarge),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSizes.s2),
                   Text(message, style: RiderText.caption),
                 ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSizes.s12),
         Row(
           children: [
             for (var i = 0; i < actions.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
+              if (i > 0) const SizedBox(width: AppSizes.s8),
               // Two are 141 and 145 wide in the design.
-              Expanded(flex: actions.length == 2 ? (i == 0 ? 141 : 145) : 1, child: actions[i]),
+              Expanded(flex: actions.length == 2 ? (i == 0 ? AppLimits.flex141 : AppLimits.flex145) : AppLimits.flex1, child: actions[i]),
             ],
           ],
         ),
@@ -150,10 +152,10 @@ class RiderNudgeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 48,
+    height: AppSizes.s48,
     child: Material(
-      color: outlined ? Colors.transparent : RiderColors.brand,
-      shape: StadiumBorder(side: outlined ? const BorderSide(color: RiderColors.nudgeOutline, width: 1.5) : BorderSide.none),
+      color: outlined ? RiderColors.transparent : RiderColors.brand,
+      shape: StadiumBorder(side: outlined ? const BorderSide(color: RiderColors.nudgeOutline, width: AppSizes.s1_5) : BorderSide.none),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onPressed,
@@ -175,10 +177,10 @@ class RiderPauseGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget bar() => Container(
-      width: 9,
-      height: 28,
-      decoration: BoxDecoration(color: RiderColors.brand, borderRadius: BorderRadius.circular(4.5)),
+      width: AppSizes.s9,
+      height: AppSizes.s28,
+      decoration: BoxDecoration(color: RiderColors.brand, borderRadius: BorderRadius.circular(AppSizes.s4_5)),
     );
-    return Row(mainAxisSize: MainAxisSize.min, children: [bar(), const SizedBox(width: 10), bar()]);
+    return Row(mainAxisSize: MainAxisSize.min, children: [bar(), const SizedBox(width: AppSizes.s10), bar()]);
   }
 }

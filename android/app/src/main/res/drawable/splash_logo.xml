@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The splash's 104dp Ninzo mark (RiderLogoMark): green gradient tile, soft
+     gloss, white edge, three speed lines and the "N". -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="104dp"
+    android:height="104dp"
+    android:viewportWidth="104"
+    android:viewportHeight="104">
+    <path android:pathData="M32,0 L72,0 A32,32 0 0 1 104,32 L104,72 A32,32 0 0 1 72,104 L32,104 A32,32 0 0 1 0,72 L0,32 A32,32 0 0 1 32,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="52" android:startY="0"
+                android:endX="52" android:endY="104"
+                android:startColor="#FF33D138"
+                android:endColor="#FF00800D" />
+        </aapt:attr>
+    </path>
+    <group>
+        <clip-path android:pathData="M32,0 L72,0 A32,32 0 0 1 104,32 L104,72 A32,32 0 0 1 72,104 L32,104 A32,32 0 0 1 0,72 L0,32 A32,32 0 0 1 32,0 Z" />
+        <path
+            android:fillColor="#1FFFFFFF"
+            android:pathData="M48,-51 A75,40 0 1 1 47.99,-51 Z" />
+    </group>
+    <path
+        android:strokeColor="#59FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M32,0.75 L72,0.75 A31.25,31.25 0 0 1 103.25,32 L103.25,72 A31.25,31.25 0 0 1 72,103.25 L32,103.25 A31.25,31.25 0 0 1 0.75,72 L0.75,32 A31.25,31.25 0 0 1 32,0.75 Z" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M14.42,40.08 L26.92,40.08 M14.42,50.08 L34.92,50.08 M14.42,60.08 L24.92,60.08" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M45,76 L45,32.5 L54.2,32.5 L74.3,61.4 L74.3,32.5 L83.5,32.5 L83.5,76 L74.4,76 L54.2,47 L54.2,76 Z" />
+</vector>

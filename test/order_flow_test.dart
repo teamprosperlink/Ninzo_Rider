@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:ninzo_rider/features/orders/presentation/viewmodels/order_flow_view_model.dart';
+import 'package:ninzo_rider/presentation/orders/viewmodels/order_flow_view_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ninzo_rider/core/error/app_exception.dart';
+import 'package:ninzo_rider/core/errors/app_exception.dart';
 import 'package:ninzo_rider/core/utils/formatters.dart';
-import 'package:ninzo_rider/features/intro/domain/entities/app_permission.dart';
-import 'package:ninzo_rider/features/online/domain/entities/online_status.dart';
-import 'package:ninzo_rider/features/orders/domain/entities/delivery_order.dart';
-import 'package:ninzo_rider/features/orders/domain/usecases/delivery_usecases.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
-import 'package:ninzo_rider/features/shift/domain/entities/shift.dart';
+import 'package:ninzo_rider/domain/entities/app_permission.dart';
+import 'package:ninzo_rider/domain/entities/online_status.dart';
+import 'package:ninzo_rider/domain/entities/delivery_order.dart';
+import 'package:ninzo_rider/domain/usecases/delivery_usecases.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/shift.dart';
 
 import 'fakes.dart';
 

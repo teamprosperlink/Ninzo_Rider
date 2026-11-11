@@ -7,10 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'package:ninzo_rider/core/widgets/rider/rider_ui.dart';
-import 'package:ninzo_rider/features/account/domain/entities/app_user.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/auth_failure.dart';
-import 'package:ninzo_rider/features/auth/domain/entities/rider_account_info.dart';
-import 'package:ninzo_rider/features/register/domain/entities/rider_application.dart';
+import 'package:ninzo_rider/domain/entities/app_user.dart';
+import 'package:ninzo_rider/domain/entities/auth_failure.dart';
+import 'package:ninzo_rider/domain/entities/rider_account_info.dart';
+import 'package:ninzo_rider/domain/entities/rider_application.dart';
 
 import '../../test/fakes.dart';
 
@@ -83,7 +83,7 @@ void main() {
 
     final fakes = Fakes()
       ..intro.seen = false
-      ..splash = const Duration(seconds: 3)
+      ..splash = const Duration(seconds: 8)
       ..permissions.denyRequests = true;
     // A rider with a profile, so "Start shift" leads home.
     fakes.users.user.value = const AppUser(
@@ -99,7 +99,7 @@ void main() {
     // ── Section 1 · Onboarding ──
     expect(find.text('HOT FOOD. 90 SECONDS.'), findsOneWidget);
     await shot(tester, 'onboard_01_splash');
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 8));
     await settle(tester);
 
     expect(find.text('Deliver hot food in 90 seconds'), findsOneWidget);
