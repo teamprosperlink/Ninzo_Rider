@@ -26,6 +26,7 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/idempotency"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/outbox"
 	"github.com/teamprosperlink/Ninzo_backend/internal/relocation"
+	"github.com/teamprosperlink/Ninzo_backend/internal/ridernotes"
 )
 
 var idPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -65,6 +66,7 @@ func (s *Service) MountRider(r chi.Router, signedIn ...func(http.Handler) http.H
 		g.Get("/nodes", s.listNodes)
 		g.With(idem).Post("/riders/me/stock/scan", s.scanStock)
 		g.Get("/riders/me/stock", s.getStock)
+		s.mountPlans(g, idem)
 	})
 }
 
@@ -141,24 +143,47 @@ type shift struct {
 	// on this shift. Both are filled by Fill.
 	NodeAssignedAt string         `json:"node_assigned_at"`
 	Scooter        map[string]any `json:"scooter"`
+	// PlannedEndAt is from the day's shift plan, kept on the shift at its start. DeviceID is the
+	// phone that started it. Both can be null, and both are filled by Fill.
+	PlannedEndAt *string `json:"planned_end_at"`
+	DeviceID     *string `json:"device_id"`
 }
 
-// Fill adds node_assigned_at and the scooter to a shift read from the database. The battery is null
-// until scooter data exists (docs/engineering/real_and_stand_ins.md).
-func Fill(ctx context.Context, q querier, shiftID string, started time.Time) (assigned string, scooter map[string]any, err error) {
+// Filled is what Fill adds to a shift read from the database.
+type Filled struct {
+	NodeAssignedAt string
+	Scooter        map[string]any
+	PlannedEndAt   *string
+	DeviceID       *string
+}
+
+// Fill adds node_assigned_at, the scooter, the planned end and the device to a shift read from the
+// database. The battery is null until scooter data exists (docs/engineering/real_and_stand_ins.md).
+func Fill(ctx context.Context, q querier, shiftID string, started time.Time) (Filled, error) {
 	var id, plate string
-	var arrived *time.Time
-	err = q.QueryRow(ctx, `SELECT c.id::text, c.code,
-			(SELECT max(m.accepted_at) FROM relocations m WHERE m.shift_id = sh.id AND m.accepted_at IS NOT NULL)
-		FROM shifts sh JOIN scooters c ON c.id = sh.scooter_id WHERE sh.id = $1`, shiftID).Scan(&id, &plate, &arrived)
+	var arrived, plannedEnd *time.Time
+	var device *string
+	err := q.QueryRow(ctx, `SELECT c.id::text, c.code,
+			(SELECT max(m.accepted_at) FROM relocations m WHERE m.shift_id = sh.id AND m.accepted_at IS NOT NULL),
+			sh.planned_end_at, sh.device_id::text
+		FROM shifts sh JOIN scooters c ON c.id = sh.scooter_id WHERE sh.id = $1`, shiftID).Scan(&id, &plate, &arrived, &plannedEnd, &device)
 	if err != nil {
-		return "", nil, err
+		return Filled{}, err
 	}
 	at := started
 	if arrived != nil && arrived.After(started) {
 		at = *arrived
 	}
-	return stamp(at), map[string]any{"id": id, "plate": plate, "battery_pct": nil}, nil
+	f := Filled{NodeAssignedAt: stamp(at), Scooter: map[string]any{"id": id, "plate": plate, "battery_pct": nil}, DeviceID: device}
+	if plannedEnd != nil {
+		e := stamp(*plannedEnd)
+		f.PlannedEndAt = &e
+	}
+	return f, nil
+}
+
+func (sh *shift) fill(f Filled) {
+	sh.NodeAssignedAt, sh.Scooter, sh.PlannedEndAt, sh.DeviceID = f.NodeAssignedAt, f.Scooter, f.PlannedEndAt, f.DeviceID
 }
 
 // openShift returns the rider's open shift and its scooter, locked.
@@ -175,19 +200,23 @@ func openShift(ctx context.Context, tx pgx.Tx, riderID string) (shift, string, b
 		return sh, "", false, err
 	}
 	sh.StartedAt = stamp(started)
-	sh.NodeAssignedAt, sh.Scooter, err = Fill(ctx, tx, sh.ID, started)
+	f, err := Fill(ctx, tx, sh.ID, started)
+	sh.fill(f)
 	return sh, scooter, err == nil, err
 }
 
 func (s *Service) startShift(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
 	var body struct {
-		NodeID string `json:"node_id"`
+		NodeID   string  `json:"node_id"`
+		DeviceID *string `json:"device_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || !idPattern.MatchString(body.NodeID) {
-		httpserver.WriteError(w, http.StatusBadRequest, "invalid_request", "Send node_id.", false)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || !idPattern.MatchString(body.NodeID) ||
+		(body.DeviceID != nil && !idPattern.MatchString(*body.DeviceID)) {
+		httpserver.WriteError(w, http.StatusBadRequest, "invalid_request", "Send node_id, and device_id only as registered.", false)
 		return
 	}
+	errBadDevice := errors.New("shifts: not this rider's device")
 	var reply map[string]any
 	err := database.InTx(r.Context(), s.Pool, func(tx pgx.Tx) error {
 		if err := identity.CheckSession(r.Context(), tx, actor); err != nil {
@@ -243,17 +272,40 @@ func (s *Service) startShift(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(r.Context(), "UPDATE scooters SET current_rider_id = $2, updated_at = now() WHERE id = $1", scooter, actor.ID); err != nil {
 			return err
 		}
+		if body.DeviceID != nil {
+			var mine bool
+			if err := tx.QueryRow(r.Context(), "SELECT EXISTS (SELECT 1 FROM devices WHERE id = $1 AND actor_type = $2 AND actor_id = $3)",
+				*body.DeviceID, identity.TypeRider, actor.ID).Scan(&mine); err != nil {
+				return err
+			}
+			if !mine {
+				return errBadDevice
+			}
+		}
 		var sh shift
 		var started time.Time
-		if err := tx.QueryRow(r.Context(), `INSERT INTO shifts (rider_id, node_id, scooter_id) VALUES ($1, $2, $3)
-			RETURNING id::text, node_id::text, started_at`, actor.ID, body.NodeID, scooter).Scan(&sh.ID, &sh.NodeID, &started); err != nil {
+		// The planned end comes from today's plan, if operations made one.
+		if err := tx.QueryRow(r.Context(), `INSERT INTO shifts (rider_id, node_id, scooter_id, device_id, planned_end_at)
+			VALUES ($1, $2, $3, $4, (SELECT p.ends_at FROM shift_plans p WHERE p.rider_id = $1 AND p.day = $5::date))
+			RETURNING id::text, node_id::text, started_at`, actor.ID, body.NodeID, scooter, body.DeviceID, IndiaDay(time.Now())).
+			Scan(&sh.ID, &sh.NodeID, &started); err != nil {
 			return err
 		}
 		sh.StartedAt = stamp(started)
-		if sh.NodeAssignedAt, sh.Scooter, err = Fill(r.Context(), tx, sh.ID, started); err != nil {
+		f, err := Fill(r.Context(), tx, sh.ID, started)
+		if err != nil {
 			return err
 		}
+		sh.fill(f)
 		if err := bump(r.Context(), tx, actor.ID); err != nil {
+			return err
+		}
+		var nodeName string
+		if err := tx.QueryRow(r.Context(), "SELECT name FROM staging_nodes WHERE id = $1", body.NodeID).Scan(&nodeName); err != nil {
+			return err
+		}
+		if err := ridernotes.Add(r.Context(), tx, actor.ID, ridernotes.SpotAssigned, "Spot assigned · "+nodeName,
+			"Head there when you're ready."); err != nil {
 			return err
 		}
 		if err := audit.Record(r.Context(), tx, audit.Event{
@@ -265,12 +317,22 @@ func (s *Service) startShift(w http.ResponseWriter, r *http.Request) {
 		reply = map[string]any{"shift": sh, "server_time": serverTime()}
 		return idempotency.Save(r.Context(), tx, http.StatusOK, reply)
 	})
+	if errors.Is(err, errBadDevice) {
+		httpserver.WriteError(w, http.StatusBadRequest, "invalid_request", "That device is not registered to this rider.", false)
+		return
+	}
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
 	httpserver.WriteJSON(w, http.StatusOK, reply)
 }
+
+// india is the zones' local time. India has no daylight saving, so a fixed offset is exact.
+var india = time.FixedZone("IST", 5*3600+1800)
+
+// IndiaDay is the day of t in India, as YYYY-MM-DD: the day a shift plan is for.
+func IndiaDay(t time.Time) string { return t.In(india).Format("2006-01-02") }
 
 // endShift frees the scooter. Its stock stays on it, for the next rider.
 func (s *Service) endShift(w http.ResponseWriter, r *http.Request) {

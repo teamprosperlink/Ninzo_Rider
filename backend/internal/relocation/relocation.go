@@ -25,6 +25,7 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/httpserver"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/idempotency"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/outbox"
+	"github.com/teamprosperlink/Ninzo_backend/internal/ridernotes"
 )
 
 // arriveWithin is how long an accepted move waits for the rider to reach the node. After it, the
@@ -457,6 +458,14 @@ func (s *Service) suggestIn(ctx context.Context, tx pgx.Tx, zone string, now tim
 			return made, err
 		}
 		if err := bump(ctx, tx, who, id); err != nil {
+			return made, err
+		}
+		var toName string
+		if err := tx.QueryRow(ctx, "SELECT name FROM staging_nodes WHERE id = $1", to.id).Scan(&toName); err != nil {
+			return made, err
+		}
+		if err := ridernotes.Add(ctx, tx, who, ridernotes.OrdersWaiting, "Orders waiting at "+toName,
+			fmt.Sprintf("%d orders expected there. Your ride there is paid time.", to.demand)); err != nil {
 			return made, err
 		}
 		from.free, from.waiting = from.free[1:], from.waiting-1

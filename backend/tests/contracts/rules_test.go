@@ -462,7 +462,7 @@ func TestRiderContractHasNoCountdown(t *testing.T) {
 // and no customer contact details.
 var riderOrderFields = []string{
 	"ended_reason", "fencing_token", "gate", "handed_over_at", "id", "items", "offer_id", "order_number",
-	"otp_available", "rider_accepted_at", "seq", "state", "timer_label",
+	"otp_available", "payment_method", "rider_accepted_at", "seq", "state", "timer_label", "total",
 }
 
 func TestRiderOrderFieldsAreExactlyTheAllowedList(t *testing.T) {

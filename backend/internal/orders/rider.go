@@ -94,17 +94,27 @@ type offerRow struct {
 	otpAvailable                                 bool
 	timerLength                                  *int
 	orderNo                                      int64
+	totalPaise                                   int
+	currency                                     string
+}
+
+// paymentPrepaid is the only payment method so far: every order is paid online before it is
+// offered, so the rider collects nothing.
+const paymentPrepaid = "prepaid"
+
+func (f offerRow) total() map[string]any {
+	return map[string]any{"amount_minor": f.totalPaise, "currency": f.currency}
 }
 
 func readOffer(ctx context.Context, q querier, offerID string) (offerRow, error) {
 	var f offerRow
 	err := q.QueryRow(ctx, `SELECT f.id::text, f.order_id::text, f.rider_id::text, f.fencing_token, f.state, o.state, f.ended_reason, f.final_state,
-			f.expires_at, f.rider_accepted_at, f.released_at, o.handed_over_at, o.timer_length_s, o.order_no,
+			f.expires_at, f.rider_accepted_at, f.released_at, o.handed_over_at, o.timer_length_s, o.order_no, o.total_paise, o.currency,
 			f.released_at IS NULL AND o.handover_otp IS NOT NULL
 				AND ((o.state = 'ARRIVED' AND coalesce(o.min_wait_until <= o.arrived_at OR o.min_wait_until_seen, false)) OR o.otp_released_at IS NOT NULL)
 		FROM offers f JOIN orders o ON o.id = f.order_id WHERE f.id = $1`, offerID).
 		Scan(&f.id, &f.orderID, &f.rider, &f.token, &f.state, &f.orderState, &f.endedReason, &f.finalState,
-			&f.expiresAt, &f.acceptedAt, &f.releasedAt, &f.handedOverAt, &f.timerLength, &f.orderNo, &f.otpAvailable)
+			&f.expiresAt, &f.acceptedAt, &f.releasedAt, &f.handedOverAt, &f.timerLength, &f.orderNo, &f.totalPaise, &f.currency, &f.otpAvailable)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return f, errNotFound
 	}
@@ -158,7 +168,7 @@ func offerView(ctx context.Context, q querier, f offerRow, now time.Time) (map[s
 		order = f.orderID
 	}
 	return map[string]any{"id": f.id, "order_id": order, "items": items, "gate": gate, "expires_at": f.expiresAt.UTC().Format(time.RFC3339Nano),
-		"state": state, "fencing_token": f.token, "order_number": OrderNumber(f.orderNo)}, nil
+		"state": state, "fencing_token": f.token, "order_number": OrderNumber(f.orderNo), "total": f.total(), "payment_method": paymentPrepaid}, nil
 }
 
 // riderOrderView is an order as the rider holding the offer sees it. Once the rider no longer has
@@ -193,7 +203,8 @@ func riderOrderView(ctx context.Context, q querier, f offerRow) (map[string]any,
 	}
 	return map[string]any{"id": f.orderID, "offer_id": f.id, "fencing_token": f.token, "state": state, "seq": seq, "ended_reason": ended,
 		"items": items, "gate": gate, "timer_label": timerLabel(length), "rider_accepted_at": stamp(f.acceptedAt),
-		"otp_available": f.otpAvailable, "handed_over_at": stamp(f.handedOverAt), "order_number": OrderNumber(f.orderNo)}, nil
+		"otp_available": f.otpAvailable, "handed_over_at": stamp(f.handedOverAt), "order_number": OrderNumber(f.orderNo),
+		"total": f.total(), "payment_method": paymentPrepaid}, nil
 }
 
 func (s *Service) riderState(w http.ResponseWriter, r *http.Request) {
@@ -214,14 +225,13 @@ func (s *Service) riderState(w http.ResponseWriter, r *http.Request) {
 	err = s.Pool.QueryRow(ctx, "SELECT id::text, node_id::text, started_at FROM shifts WHERE rider_id = $1 AND ended_at IS NULL", actor.ID).Scan(&id, &node, &started)
 	switch {
 	case err == nil:
-		var assigned string
-		var scooter map[string]any
-		if assigned, scooter, err = shifts.Fill(ctx, s.Pool, id, started); err != nil {
+		f, err := shifts.Fill(ctx, s.Pool, id, started)
+		if err != nil {
 			s.fail(w, r, err)
 			return
 		}
 		shift = map[string]any{"id": id, "node_id": node, "started_at": started.UTC().Format(time.RFC3339Nano), "ended_at": nil,
-			"node_assigned_at": assigned, "scooter": scooter}
+			"node_assigned_at": f.NodeAssignedAt, "scooter": f.Scooter, "planned_end_at": f.PlannedEndAt, "device_id": f.DeviceID}
 	case !errors.Is(err, pgx.ErrNoRows):
 		s.fail(w, r, err)
 		return

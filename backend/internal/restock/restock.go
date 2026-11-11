@@ -208,7 +208,7 @@ func (s *Service) options(w http.ResponseWriter, r *http.Request) {
 	}
 	hubs := []map[string]any{}
 	if zone != nil {
-		rows, err := s.Pool.Query(r.Context(), "SELECT id::text, name, lat, lng FROM hubs WHERE zone_id = $1 AND status = 'active' ORDER BY name, id", *zone)
+		rows, err := s.Pool.Query(r.Context(), "SELECT id::text, name, lat, lng, manager_phone FROM hubs WHERE zone_id = $1 AND status = 'active' ORDER BY name, id", *zone)
 		if err != nil {
 			s.fail(w, r, err)
 			return
@@ -216,8 +216,9 @@ func (s *Service) options(w http.ResponseWriter, r *http.Request) {
 		if hubs, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (map[string]any, error) {
 			var id, name string
 			var lat, lng float64
-			err := r.Scan(&id, &name, &lat, &lng)
-			return map[string]any{"id": id, "name": name, "lat": lat, "lng": lng}, err
+			var phone *string // For Call hub manager. Null until the admin enters it.
+			err := r.Scan(&id, &name, &lat, &lng, &phone)
+			return map[string]any{"id": id, "name": name, "lat": lat, "lng": lng, "manager_phone": phone}, err
 		}); err != nil {
 			s.fail(w, r, err)
 			return

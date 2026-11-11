@@ -27,6 +27,7 @@ Each table belongs to one module, and only that module has SQL for it (`project_
 | `identity` | `otp_requests` | Hashed codes, their purpose, and attempts | v0.2.0 |
 | `identity` | `refresh_tokens` | Hashed refresh tokens and their chains | v0.2.0 |
 | `notify` | `devices` | Push tokens | v0.2.0 |
+| `notify` | `rider_notifications` | What each rider was told, each also sent as a push | migration 0040 |
 | `geo` | `zones` | Service areas | v0.3.0 |
 | `geo` | `zone_settings` | Timer length, perimeter, waits and limits, by version. One global row, overridden per zone | v0.3.0 |
 | `geo` | `gates` | Delivery gates | v0.3.0 |
@@ -43,6 +44,7 @@ Each table belongs to one module, and only that module has SQL for it (`project_
 | `inventory` | `stock_ledger` | Append-only record of every stock change | v0.3.0 |
 | `inventory` | `reservations` | Short holds on units | v0.4.0 |
 | `tracking` | `shifts` | Rider shifts | v0.3.0 |
+| `tracking` | `shift_plans` | Each rider's planned shift per day, the morning stock request and the hub's packing | migration 0040 |
 | `tracking` | `rider_state` | Each rider's `seq`, written by every change the rider can see | v0.3.0 |
 | `tracking` | `rider_events` | The final result of a rider's queued or direct action, by `event_id` | v0.3.0 |
 | `tracking` | `location_pings` | Pings, kept as evidence. Partitioned by day. Kept in full through testing | v0.5.0 |
@@ -179,6 +181,11 @@ Until a later table exists, an endpoint simply does not use it: `listNodes` has 
 | `getRestock` | `restock_requests`, `restock_lines`, `restock_lots`, `shortfalls`, `hubs`, `shifts`, `staging_nodes` | | | |
 | `reportProblem` | `rider_events`, `orders` | `rider_events`, `problem_reports`, `scheduled_tasks`, `outbox_events`, `audit_events`, `idempotency_keys` | | |
 | `getEarnings` | `earnings` | | | |
+| `updateRider` | `riders`, `people`, `refresh_tokens` | `riders`, `audit_events`, `idempotency_keys` | | |
+| `quarantineLot` | `shifts`, `scooter_stock`, `lots` | `lots`, `scooter_stock`, `stock_ledger`, `rider_state`, `audit_events`, `idempotency_keys` | | |
+| `getShiftPlan` | `riders`, `shift_plans`, `zones` | | | |
+| `replyToShiftPlan` | `riders`, `shift_plans` | `shift_plans`, `rider_state`, `audit_events`, `idempotency_keys` | | |
+| `listRiderNotifications` | `rider_notifications` | | | |
 
 ## 4.1 Partner API
 

@@ -5,6 +5,19 @@ each with its Issue number. Entries are added in the same PR that ships the feat
 
 ## [Unreleased]
 
+### Rider app gaps (no Issue yet: made in the rider app repo's `backend/` copy)
+- Added: `PATCH /riders/me` (`updateRider`): the rider's name, `email` and `area` (`name`, `city`, `lat`, `lng`), which the app had kept on the phone. `GET /riders/me` returns `email` and `area`. Audit rows name the fields, never the values.
+- Added: `total` (Money) and `payment_method` (`prepaid`, an open list) on the rider's offer and order. Every order is paid online before it is offered, so there is no cash method.
+- Added: shift plans (`shift_plans`): `GET /riders/me/shift-plan` (today in India time) and `POST /riders/me/shift-plan/reply` (`coming` or `not_today`, 409 `shift_plan_closed` once packing starts or the shift's start passes). Operations make plans and move packing on with `cmd/riders plan` and `cmd/riders packing` until the console does.
+- Added: shift `planned_end_at` (from the day's plan) and `device_id` (sent optionally with `startShift`, so another phone can tell the shift is open elsewhere).
+- Added: `GET /riders/me/notifications` (newest 50) and `internal/ridernotes`, which records a notification and queues its `push.rider` push in the same transaction: spot assigned at shift start, orders waiting on a move, the stock request on a new plan, stock ready.
+- Added: `POST /riders/me/stock/{lot_id}/quarantine` (`quarantineLot`): the rider takes a whole lot off their scooter (409 `no_open_shift`, `lot_not_on_scooter`, `lot_reserved`). The stock leaves through the ledger under the new reason `quarantine`.
+- Added: `manager_phone` on `getRestockOptions` hubs, set with `cmd/riders hub-phone`.
+- Added: migration 0040. Not applied to Supabase.
+- Changed: the rider order's allowed-field list now includes `total` and `payment_method` (no countdown, no customer contact).
+- Not done: turns on `getRoute`, which waits for the routing engine (OSRM); real FCM sending, which waits for the owner's Firebase project.
+- Evidence: `go test ./...` passes; the database tests compile but were not run (no local Postgres with PostGIS). Run `task test:db` before merging.
+
 ### Rider app fields (#158)
 - Added: rider `created_at`, `approved_at` (the newest `rider.approved` or `rider.approve` audit row, null before); shift `node_assigned_at` (the shift start, or the last arrived move in the shift) and `scooter` (`id`, `plate`, `battery_pct`, null until scooter data exists); node `hub_distance_m` (straight line to the nearest active hub, null if none); `order_number` on the rider's order and offer and the customer's order, a letter and four digits such as A2931 (`orders.OrderNumber`); relocation suggestion `orders_waiting`; restock request `ready_in_s`; `lat` and `lng` on every `HubRef`, and `distance_m` on a shortfall's other hub; stock lot `image_url`.
 - Added: migration 0039, `orders.order_no` (identity, existing orders numbered) and `relocations.orders_waiting` (null for older rows). Not applied to Supabase.

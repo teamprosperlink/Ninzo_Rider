@@ -198,6 +198,62 @@ paths:
           $ref: ../shared/common.yaml#/components/responses/TooManyRequests
         '500':
           $ref: ../shared/common.yaml#/components/responses/InternalError
+    patch:
+      tags:
+      - profile
+      operationId: updateRider
+      summary: Change the rider's own details
+      description: 'Send at least one of name, email and area. An applicant fills these in while
+        applying; an active rider can change them later. email null clears it, area null clears it.
+        The phone never changes here. A suspended rider gets 403.'
+      parameters:
+      - $ref: ../shared/common.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              example:
+                name: Ravi Kumar
+                email: ravi@example.com
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                email:
+                  type:
+                  - string
+                  - 'null'
+                  format: email
+                  maxLength: 254
+                area:
+                  oneOf:
+                  - $ref: '#/components/schemas/RiderArea'
+                  - type: 'null'
+      responses:
+        '200':
+          description: The rider, changed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiderResponse'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '409':
+          $ref: ../shared/common.yaml#/components/responses/Conflict
+        '422':
+          $ref: ../shared/common.yaml#/components/responses/IdempotencyKeyReused
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
   /riders/me/state:
     get:
       tags:
@@ -387,6 +443,11 @@ paths:
               - node_id
               properties:
                 node_id:
+                  $ref: ../shared/common.yaml#/components/schemas/Id
+                device_id:
+                  description: The device_id from registerRiderDevice of the phone starting the shift.
+                    Optional. It comes back on the shift, so another phone of the same rider can tell
+                    the shift is open elsewhere. A device that is not this rider's gets 400.
                   $ref: ../shared/common.yaml#/components/schemas/Id
       responses:
         '200':
@@ -584,6 +645,61 @@ paths:
           $ref: ../shared/common.yaml#/components/responses/Unauthorized
         '403':
           $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/stock/{lot_id}/quarantine:
+    post:
+      tags:
+      - stock
+      operationId: quarantineLot
+      summary: Take a lot off the scooter into quarantine
+      description: 'For the quarantine prompt after a temperature alert, or food the rider finds
+        damaged. The whole lot leaves the scooter''s stock and can never be scanned again. Errors, all
+        409: no_open_shift, lot_not_on_scooter, lot_reserved (part of it is held for an order). A lot
+        already quarantined by this rider answers 200 again.'
+      parameters:
+      - $ref: '#/components/parameters/LotId'
+      - $ref: ../shared/common.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - reason
+              properties:
+                reason:
+                  type: string
+                  enum:
+                  - temperature
+                  - damaged
+                  - expired
+                  - other
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Quarantined.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuarantineResponse'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '404':
+          $ref: ../shared/common.yaml#/components/responses/NotFound
+        '409':
+          $ref: ../shared/common.yaml#/components/responses/Conflict
+        '422':
+          $ref: ../shared/common.yaml#/components/responses/IdempotencyKeyReused
         '429':
           $ref: ../shared/common.yaml#/components/responses/TooManyRequests
         '500':
@@ -1346,6 +1462,101 @@ paths:
           $ref: ../shared/common.yaml#/components/responses/TooManyRequests
         '500':
           $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/shift-plan:
+    get:
+      tags:
+      - shift
+      operationId: getShiftPlan
+      summary: Get today's planned shift
+      description: 'Today''s plan in the zone''s local time: when the shift starts and ends, the
+        morning stock request (the rider says they are coming, or not today) and how the hub''s packing
+        is going. Operations make the plan. plan is null on a day with none.'
+      responses:
+        '200':
+          description: Today's plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftPlanResponse'
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/shift-plan/reply:
+    post:
+      tags:
+      - shift
+      operationId: replyToShiftPlan
+      summary: Answer the morning stock request
+      description: 'coming lets the hub pack the rider''s stock; not_today tells it not to. The answer
+        can change until the hub starts packing or the shift starts. Errors: 404 with no plan today;
+        409 shift_plan_closed once packing has started or the shift''s start has passed.'
+      parameters:
+      - $ref: ../shared/common.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - reply
+              properties:
+                reply:
+                  type: string
+                  enum:
+                  - coming
+                  - not_today
+      responses:
+        '200':
+          description: The plan, with the answer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftPlanResponse'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '404':
+          $ref: ../shared/common.yaml#/components/responses/NotFound
+        '409':
+          $ref: ../shared/common.yaml#/components/responses/Conflict
+        '422':
+          $ref: ../shared/common.yaml#/components/responses/IdempotencyKeyReused
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/notifications:
+    get:
+      tags:
+      - profile
+      operationId: listRiderNotifications
+      summary: List what the rider was told
+      description: The newest 50 notifications, newest first. Each was also sent as a push to the
+        rider's devices. A suspended rider can still read this.
+      responses:
+        '200':
+          description: The notifications.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiderNotificationList'
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
 components:
   securitySchemes:
     bearerAuth:
@@ -1373,6 +1584,13 @@ components:
       in: path
       required: true
       description: The restock request or suggestion.
+      schema:
+        $ref: ../shared/common.yaml#/components/schemas/Id
+    LotId:
+      name: lot_id
+      in: path
+      required: true
+      description: The lot, as getStock lists it.
       schema:
         $ref: ../shared/common.yaml#/components/schemas/Id
   schemas:
@@ -1437,6 +1655,8 @@ components:
       - zone_id
       - created_at
       - approved_at
+      - email
+      - area
       properties:
         id:
           $ref: ../shared/common.yaml#/components/schemas/Id
@@ -1463,6 +1683,41 @@ components:
           - string
           - 'null'
           format: date-time
+        email:
+          description: Contact only; it never signs anyone in. Null when not given.
+          type:
+          - string
+          - 'null'
+        area:
+          description: Where the rider wants to work, as they chose it while applying. Null when not
+            given.
+          oneOf:
+          - $ref: '#/components/schemas/RiderArea'
+          - type: 'null'
+    RiderArea:
+      type: object
+      description: A place the rider picked, such as a town or a junction.
+      required:
+      - name
+      - city
+      - lat
+      - lng
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        city:
+          type: string
+          maxLength: 80
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+        lng:
+          type: number
+          minimum: -180
+          maximum: 180
     RiderResponse:
       type: object
       required:
@@ -1531,6 +1786,8 @@ components:
       - ended_at
       - node_assigned_at
       - scooter
+      - planned_end_at
+      - device_id
       properties:
         id:
           $ref: ../shared/common.yaml#/components/schemas/Id
@@ -1568,6 +1825,18 @@ components:
               - 'null'
               minimum: 0
               maximum: 100
+        planned_end_at:
+          description: When the shift is planned to end, from the day's shift plan. Null with no plan.
+          type:
+          - string
+          - 'null'
+          format: date-time
+        device_id:
+          description: The device that started the shift. Null when none was sent. If it is not this
+            phone's device_id, the shift is open on another phone.
+          type:
+          - string
+          - 'null'
     ShiftResponse:
       type: object
       required:
@@ -1760,6 +2029,123 @@ components:
             $ref: '#/components/schemas/StockLot'
         server_time:
           $ref: ../shared/common.yaml#/components/schemas/ServerTime
+    QuarantineResponse:
+      type: object
+      required:
+      - lot_id
+      - quarantined_at
+      - server_time
+      properties:
+        lot_id:
+          $ref: ../shared/common.yaml#/components/schemas/Id
+        quarantined_at:
+          type: string
+          format: date-time
+        server_time:
+          $ref: ../shared/common.yaml#/components/schemas/ServerTime
+    ShiftPlan:
+      type: object
+      description: One day's planned shift for the rider, made by operations.
+      required:
+      - id
+      - date
+      - node_id
+      - starts_at
+      - ends_at
+      - stock_reply
+      - replied_at
+      - packing
+      - ready_at
+      properties:
+        id:
+          $ref: ../shared/common.yaml#/components/schemas/Id
+        date:
+          description: The day, in the zone's local time.
+          type: string
+          format: date
+        node_id:
+          description: Where the shift is planned to start. Null if operations have not chosen yet.
+          anyOf:
+          - $ref: ../shared/common.yaml#/components/schemas/Id
+          - type: 'null'
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        stock_reply:
+          description: The rider's answer to the morning stock request. The hub packs only after coming.
+          type: string
+          enum:
+          - pending
+          - coming
+          - not_today
+        replied_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        packing:
+          description: 'The hub packing the day''s stock: not_started, packing, then ready.'
+          type: string
+          enum:
+          - not_started
+          - packing
+          - ready
+        ready_at:
+          description: When the stock was ready, or when the hub expects it to be while packing. Null
+            before packing.
+          type:
+          - string
+          - 'null'
+          format: date-time
+    ShiftPlanResponse:
+      type: object
+      required:
+      - plan
+      - server_time
+      properties:
+        plan:
+          oneOf:
+          - $ref: '#/components/schemas/ShiftPlan'
+          - type: 'null'
+        server_time:
+          $ref: ../shared/common.yaml#/components/schemas/ServerTime
+    RiderNotification:
+      type: object
+      required:
+      - id
+      - kind
+      - title
+      - body
+      - created_at
+      properties:
+        id:
+          $ref: ../shared/common.yaml#/components/schemas/Id
+        kind:
+          description: Open list, including spot_assigned, orders_waiting, stock_request and stock_ready.
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    RiderNotificationList:
+      type: object
+      required:
+      - notifications
+      - server_time
+      properties:
+        notifications:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/RiderNotification'
+        server_time:
+          $ref: ../shared/common.yaml#/components/schemas/ServerTime
     OrderLine:
       type: object
       required:
@@ -1785,6 +2171,8 @@ components:
       - state
       - fencing_token
       - order_number
+      - total
+      - payment_method
       properties:
         id:
           $ref: ../shared/common.yaml#/components/schemas/Id
@@ -1839,6 +2227,17 @@ components:
           description: Readable order number, a letter and four digits such as A2931.
           type: string
           pattern: '^[A-Z][0-9]{4}$'
+        total:
+          description: What the customer paid for the order.
+          $ref: ../shared/common.yaml#/components/schemas/Money
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethod'
+    PaymentMethod:
+      type: string
+      description: 'How the order was paid. Open list. prepaid: paid online before the order was
+        offered, so the rider collects nothing and the handover takes the customer''s OTP.'
+      enum:
+      - prepaid
     OfferList:
       type: object
       required:
@@ -1869,6 +2268,8 @@ components:
       - otp_available
       - handed_over_at
       - order_number
+      - total
+      - payment_method
       properties:
         id:
           $ref: ../shared/common.yaml#/components/schemas/Id
@@ -1937,6 +2338,11 @@ components:
           description: Readable order number, a letter and four digits such as A2931.
           type: string
           pattern: '^[A-Z][0-9]{4}$'
+        total:
+          description: What the customer paid for the order.
+          $ref: ../shared/common.yaml#/components/schemas/Money
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethod'
     OrderResponse:
       type: object
       required:
@@ -2324,7 +2730,18 @@ components:
         hubs:
           type: array
           items:
-            $ref: '#/components/schemas/HubRef'
+            allOf:
+            - $ref: '#/components/schemas/HubRef'
+            - type: object
+              required:
+              - manager_phone
+              properties:
+                manager_phone:
+                  description: The hub manager's number, for Call hub manager. Null until the hub has one.
+                  type:
+                  - string
+                  - 'null'
+                  pattern: '^\+[1-9][0-9]{7,14}$'
         items:
           type: array
           items:

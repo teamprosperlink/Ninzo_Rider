@@ -3,6 +3,7 @@ package mockserver
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -44,6 +45,11 @@ var riderScenarios = map[string]string{
 	"socket_drop":             "The stream drops after two events",
 	"token_expiring":          "The stream closes with 4401 after two events, unless the app sends a new auth frame",
 	"idempotency_in_progress": "Any write with an Idempotency-Key returns a retryable 409, with Retry-After",
+	"no_shift_plan":           "GET shift plan has no plan today. Reply fails with 404",
+	"shift_plan_closed":       "The hub is packing. Reply fails with shift_plan_closed",
+	"stock_ready":             "GET shift plan shows the day's stock ready at the hub",
+	"lot_not_on_scooter":      "Quarantine fails with lot_not_on_scooter",
+	"lot_reserved":            "Quarantine fails with lot_reserved",
 }
 
 // riderStory is one scenario's events, with what GET returns.
@@ -62,6 +68,7 @@ func riderOrder(state string, seq int, now time.Time) map[string]any {
 		"items": []map[string]any{{"item_id": "item_burger", "name": "Burger", "qty": 1}},
 		"gate":  riderGate(), "timer_label": "1.5 mins", "rider_accepted_at": stamp(now.Add(-time.Minute)),
 		"otp_available": state == "ARRIVED", "handed_over_at": nil, "order_number": "A2931",
+		"total": money(14900), "payment_method": "prepaid",
 	}
 	if state == "HANDED_OVER" {
 		o["handed_over_at"] = stamp(now)
@@ -152,12 +159,14 @@ func sampleOffer(state string, now time.Time) map[string]any {
 	return map[string]any{
 		"id": "off_mock01", "order_id": orderRef, "items": []map[string]any{{"item_id": "item_burger", "name": "Burger", "qty": 1}},
 		"gate": riderGate(), "expires_at": stamp(now.Add(20 * time.Second)), "state": state, "fencing_token": "ft_mock01", "order_number": "A2931",
+		"total": money(14900), "payment_method": "prepaid",
 	}
 }
 
 func sampleShift(now time.Time, ended bool) map[string]any {
 	s := map[string]any{"id": "shf_mock01", "node_id": "node_mock01", "started_at": stamp(now.Add(-time.Hour)), "ended_at": nil,
-		"node_assigned_at": stamp(now.Add(-time.Hour)), "scooter": map[string]any{"id": "scr_mock01", "plate": "NZ-014", "battery_pct": nil}}
+		"node_assigned_at": stamp(now.Add(-time.Hour)), "scooter": map[string]any{"id": "scr_mock01", "plate": "NZ-014", "battery_pct": nil},
+		"planned_end_at": stamp(now.Add(7 * time.Hour)), "device_id": nil}
 	if ended {
 		s["ended_at"] = stamp(now)
 	}
@@ -198,8 +207,86 @@ func riderRoutes() []route {
 				accountBlocked(c)
 				return
 			}
-			c.json(200, map[string]any{"rider": map[string]any{"id": "rdr_mock0001", "name": "Ravi Kumar", "status": "active", "zone_id": "zone_mock01",
-				"created_at": stamp(c.now.Add(-30 * 24 * time.Hour)), "approved_at": stamp(c.now.Add(-29 * 24 * time.Hour))}})
+			c.json(200, map[string]any{"rider": sampleRider(c.now)})
+		}},
+		{method: "PATCH", path: "/riders/me", handle: func(c *call) {
+			if c.scenario == "rider_suspended" {
+				c.json(403, map[string]any{"code": "forbidden", "message": "This rider is suspended.", "retryable": false, "missing_permission": "rider.update"})
+				return
+			}
+			body, ok := needsBody(c)
+			if !ok {
+				return
+			}
+			rider := sampleRider(c.now)
+			changed := false
+			for _, field := range []string{"name", "email", "area"} {
+				if v, has := body[field]; has {
+					rider[field], changed = v, true
+				}
+			}
+			if !changed {
+				c.fail(400, "invalid_request", "Send name, email or area.", false)
+				return
+			}
+			// The name can change, never be cleared.
+			if raw, has := body["name"]; has {
+				if v, isText := raw.(string); !isText || strings.TrimSpace(v) == "" {
+					c.fail(400, "invalid_request", "That name is not valid.", false)
+					return
+				}
+			}
+			if v, isText := body["email"].(string); body["email"] != nil && (!isText || !strings.Contains(v, "@")) {
+				c.fail(400, "invalid_request", "That email is not valid.", false)
+				return
+			}
+			if area, has := body["area"]; has && area != nil {
+				a, isObject := area.(map[string]any)
+				_, latOK := a["lat"].(float64)
+				_, lngOK := a["lng"].(float64)
+				name, _ := a["name"].(string)
+				if !isObject || !latOK || !lngOK || strings.TrimSpace(name) == "" {
+					c.fail(400, "invalid_request", "Send area with name, city, lat and lng.", false)
+					return
+				}
+				if _, hasCity := a["city"].(string); !hasCity {
+					a["city"] = ""
+				}
+			}
+			c.json(200, map[string]any{"rider": rider})
+		}},
+		{method: "GET", path: "/riders/me/notifications", handle: func(c *call) {
+			c.json(200, map[string]any{"notifications": []map[string]any{
+				{"id": "ntf_mock02", "kind": "orders_waiting", "title": "Orders waiting at Node 8", "body": "Your ride there is paid time.", "created_at": stamp(c.now.Add(-10 * time.Minute))},
+				{"id": "ntf_mock01", "kind": "spot_assigned", "title": "Spot assigned · Node 7", "body": "Head there when you're ready.", "created_at": stamp(c.now.Add(-time.Hour))},
+			}})
+		}},
+		{method: "GET", path: "/riders/me/shift-plan", handle: func(c *call) {
+			if c.scenario == "no_shift_plan" {
+				c.json(200, map[string]any{"plan": nil})
+				return
+			}
+			c.json(200, map[string]any{"plan": sampleShiftPlan(c.scenario, c.now, "")})
+		}},
+		{method: "POST", path: "/riders/me/shift-plan/reply", handle: func(c *call) {
+			switch c.scenario {
+			case "no_shift_plan":
+				c.fail(404, "not_found", "No shift is planned today.", false)
+				return
+			case "shift_plan_closed":
+				c.fail(409, "shift_plan_closed", "The hub has started packing.", false)
+				return
+			}
+			body, ok := needsBody(c, "reply")
+			if !ok {
+				return
+			}
+			reply, _ := body["reply"].(string)
+			if reply != "coming" && reply != "not_today" {
+				c.fail(400, "invalid_request", "reply must be coming or not_today.", false)
+				return
+			}
+			c.json(200, map[string]any{"plan": sampleShiftPlan(c.scenario, c.now, reply)})
 		}},
 		{method: "GET", path: "/riders/me/state", handle: func(c *call) {
 			story := riderStoryFor(c.scenario, c.now)
@@ -245,8 +332,12 @@ func riderRoutes() []route {
 			if offerError(c, "rider_not_approved", "shift_limit_reached", "shift_already_open") {
 				return
 			}
-			if _, ok := needsBody(c, "node_id"); ok {
-				c.json(200, map[string]any{"shift": sampleShift(c.now, false)})
+			if body, ok := needsBody(c, "node_id"); ok {
+				shift := sampleShift(c.now, false)
+				if device, isText := body["device_id"].(string); isText && device != "" {
+					shift["device_id"] = device
+				}
+				c.json(200, map[string]any{"shift": shift})
 			}
 		}},
 		{method: "POST", path: "/riders/me/shifts/end", handle: func(c *call) {
@@ -287,6 +378,22 @@ func riderRoutes() []route {
 		}},
 		{method: "GET", path: "/riders/me/stock", handle: func(c *call) {
 			c.json(200, map[string]any{"lots": []map[string]any{{"lot_id": "lot_mock01", "item_id": "item_burger", "qty": 6, "expiry": stamp(c.now.Add(4 * time.Hour)), "temp_status": "ok", "image_url": "https://example.invalid/mock/burger.jpg"}}})
+		}},
+		{method: "POST", path: "/riders/me/stock/{lot_id}/quarantine", handle: func(c *call) {
+			if offerError(c, "lot_not_on_scooter", "lot_reserved") {
+				return
+			}
+			body, ok := needsBody(c, "reason")
+			if !ok {
+				return
+			}
+			switch body["reason"] {
+			case "temperature", "damaged", "expired", "other":
+			default:
+				c.fail(400, "invalid_request", "reason must be temperature, damaged, expired or other.", false)
+				return
+			}
+			c.json(200, map[string]any{"lot_id": c.param("lot_id"), "quarantined_at": stamp(c.now)})
 		}},
 		{method: "GET", path: "/riders/me/offers", handle: func(c *call) {
 			offers := riderStoryFor(c.scenario, c.now).offers
@@ -388,7 +495,9 @@ func riderRoutes() []route {
 			}
 		}},
 		{method: "GET", path: "/restock/options", handle: func(c *call) {
-			c.json(200, map[string]any{"hubs": []map[string]any{mockHub()}, "items": []map[string]any{{"item_id": "item_burger", "name": "Burger"}}})
+			hub := mockHub()
+			hub["manager_phone"] = "+919800000100"
+			c.json(200, map[string]any{"hubs": []map[string]any{hub}, "items": []map[string]any{{"item_id": "item_burger", "name": "Burger"}}})
 		}},
 		{method: "GET", path: "/restock/{request_id}", handle: func(c *call) {
 			c.json(200, map[string]any{"request": sampleRestock("packing", c.now, c.scenario == "hub_short")})
@@ -441,6 +550,31 @@ func riderSessionFields(c *call) map[string]any {
 		status = "applicant"
 	}
 	return map[string]any{"rider_id": "rdr_mock0001", "status": status}
+}
+
+// sampleRider is the signed-in rider, with the details given while applying.
+func sampleRider(now time.Time) map[string]any {
+	return map[string]any{"id": "rdr_mock0001", "name": "Ravi Kumar", "status": "active", "zone_id": "zone_mock01",
+		"created_at": stamp(now.Add(-30 * 24 * time.Hour)), "approved_at": stamp(now.Add(-29 * 24 * time.Hour)),
+		"email": "ravi@example.invalid", "area": map[string]any{"name": "Koramangala", "city": "Bengaluru", "lat": 12.9352, "lng": 77.6245}}
+}
+
+// sampleShiftPlan is today's plan: starting in an hour, eight hours long. reply is the rider's
+// answer just sent, or "" for what GET shows in the scenario.
+func sampleShiftPlan(scenario string, now time.Time, reply string) map[string]any {
+	day := now.Add(5*time.Hour + 30*time.Minute) // India
+	p := map[string]any{"id": "pln_mock01", "date": day.Format("2006-01-02"), "node_id": "node_mock01",
+		"starts_at": stamp(now.Add(time.Hour)), "ends_at": stamp(now.Add(9 * time.Hour)),
+		"stock_reply": "pending", "replied_at": nil, "packing": "not_started", "ready_at": nil}
+	switch {
+	case reply != "":
+		p["stock_reply"], p["replied_at"] = reply, stamp(now)
+	case scenario == "shift_plan_closed":
+		p["stock_reply"], p["replied_at"], p["packing"], p["ready_at"] = "coming", stamp(now.Add(-time.Hour)), "packing", stamp(now.Add(20*time.Minute))
+	case scenario == "stock_ready":
+		p["stock_reply"], p["replied_at"], p["packing"], p["ready_at"] = "coming", stamp(now.Add(-2*time.Hour)), "ready", stamp(now.Add(-10*time.Minute))
+	}
+	return p
 }
 
 // mockHub is the sample hub reference, with its place.
