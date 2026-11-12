@@ -67,6 +67,7 @@ func (s *Service) MountRider(r chi.Router, signedIn ...func(http.Handler) http.H
 		g.With(idem).Post("/riders/me/stock/scan", s.scanStock)
 		g.Get("/riders/me/stock", s.getStock)
 		s.mountPlans(g, idem)
+		s.mountDay(g, idem)
 	})
 }
 
@@ -76,9 +77,12 @@ func stamp(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 
 func (s *Service) fail(w http.ResponseWriter, r *http.Request, err error) {
 	var no *refusal
+	var bad *badRequest
 	switch {
 	case errors.As(err, &no):
 		httpserver.WriteError(w, http.StatusConflict, no.code, no.message, false)
+	case errors.As(err, &bad):
+		httpserver.WriteError(w, http.StatusBadRequest, "invalid_request", bad.message, false)
 	case errors.Is(err, identity.ErrSessionInvalid):
 		httpserver.WriteError(w, http.StatusUnauthorized, "unauthorized", "Sign in again.", false)
 	case errors.Is(err, errBlocked):
@@ -147,6 +151,10 @@ type shift struct {
 	// phone that started it. Both can be null, and both are filled by Fill.
 	PlannedEndAt *string `json:"planned_end_at"`
 	DeviceID     *string `json:"device_id"`
+	// OnlineAt is when the rider went online at their spot; Break is the break under way. Both are
+	// filled by Fill.
+	OnlineAt *string `json:"online_at"`
+	Break    any     `json:"break"`
 }
 
 // Filled is what Fill adds to a shift read from the database.
@@ -155,18 +163,22 @@ type Filled struct {
 	Scooter        map[string]any
 	PlannedEndAt   *string
 	DeviceID       *string
+	OnlineAt       *string
+	// Break is {started_at, ends_at}, or nil with no break on.
+	Break any
 }
 
 // Fill adds node_assigned_at, the scooter, the planned end and the device to a shift read from the
 // database. The battery is null until scooter data exists (docs/engineering/real_and_stand_ins.md).
 func Fill(ctx context.Context, q querier, shiftID string, started time.Time) (Filled, error) {
 	var id, plate string
-	var arrived, plannedEnd *time.Time
+	var arrived, plannedEnd, online, breakStart, breakEnd *time.Time
 	var device *string
 	err := q.QueryRow(ctx, `SELECT c.id::text, c.code,
 			(SELECT max(m.accepted_at) FROM relocations m WHERE m.shift_id = sh.id AND m.accepted_at IS NOT NULL),
-			sh.planned_end_at, sh.device_id::text
-		FROM shifts sh JOIN scooters c ON c.id = sh.scooter_id WHERE sh.id = $1`, shiftID).Scan(&id, &plate, &arrived, &plannedEnd, &device)
+			sh.planned_end_at, sh.device_id::text, sh.online_at, sh.break_started_at, sh.break_ends_at
+		FROM shifts sh JOIN scooters c ON c.id = sh.scooter_id WHERE sh.id = $1`, shiftID).
+		Scan(&id, &plate, &arrived, &plannedEnd, &device, &online, &breakStart, &breakEnd)
 	if err != nil {
 		return Filled{}, err
 	}
@@ -174,16 +186,17 @@ func Fill(ctx context.Context, q querier, shiftID string, started time.Time) (Fi
 	if arrived != nil && arrived.After(started) {
 		at = *arrived
 	}
-	f := Filled{NodeAssignedAt: stamp(at), Scooter: map[string]any{"id": id, "plate": plate, "battery_pct": nil}, DeviceID: device}
-	if plannedEnd != nil {
-		e := stamp(*plannedEnd)
-		f.PlannedEndAt = &e
+	f := Filled{NodeAssignedAt: stamp(at), Scooter: map[string]any{"id": id, "plate": plate, "battery_pct": nil}, DeviceID: device,
+		PlannedEndAt: optional(plannedEnd), OnlineAt: optional(online)}
+	if breakStart != nil && breakEnd != nil {
+		f.Break = map[string]any{"started_at": stamp(*breakStart), "ends_at": stamp(*breakEnd)}
 	}
 	return f, nil
 }
 
 func (sh *shift) fill(f Filled) {
 	sh.NodeAssignedAt, sh.Scooter, sh.PlannedEndAt, sh.DeviceID = f.NodeAssignedAt, f.Scooter, f.PlannedEndAt, f.DeviceID
+	sh.OnlineAt, sh.Break = f.OnlineAt, f.Break
 }
 
 // openShift returns the rider's open shift and its scooter, locked.

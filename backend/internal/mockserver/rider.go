@@ -1,8 +1,10 @@
 package mockserver
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -50,6 +52,9 @@ var riderScenarios = map[string]string{
 	"stock_ready":             "GET shift plan shows the day's stock ready at the hub",
 	"lot_not_on_scooter":      "Quarantine fails with lot_not_on_scooter",
 	"lot_reserved":            "Quarantine fails with lot_reserved",
+	"no_open_shift":           "Going online, a break and Add time fail with no_open_shift",
+	"order_in_progress":       "A break fails with order_in_progress",
+	"already_verified":        "A document upload fails with already_verified",
 }
 
 // riderStory is one scenario's events, with what GET returns.
@@ -166,7 +171,7 @@ func sampleOffer(state string, now time.Time) map[string]any {
 func sampleShift(now time.Time, ended bool) map[string]any {
 	s := map[string]any{"id": "shf_mock01", "node_id": "node_mock01", "started_at": stamp(now.Add(-time.Hour)), "ended_at": nil,
 		"node_assigned_at": stamp(now.Add(-time.Hour)), "scooter": map[string]any{"id": "scr_mock01", "plate": "NZ-014", "battery_pct": nil},
-		"planned_end_at": stamp(now.Add(7 * time.Hour)), "device_id": nil}
+		"planned_end_at": stamp(now.Add(7 * time.Hour)), "device_id": nil, "online_at": stamp(now.Add(-50 * time.Minute)), "break": nil}
 	if ended {
 		s["ended_at"] = stamp(now)
 	}
@@ -342,6 +347,94 @@ func riderRoutes() []route {
 		}},
 		{method: "POST", path: "/riders/me/shifts/end", handle: func(c *call) {
 			c.json(200, map[string]any{"shift": sampleShift(c.now, true)})
+		}},
+		{method: "POST", path: "/riders/me/shifts/online", handle: func(c *call) {
+			if offerError(c, "no_open_shift") {
+				return
+			}
+			c.json(200, map[string]any{"shift": sampleShift(c.now, false)})
+		}},
+		{method: "POST", path: "/riders/me/shifts/break", handle: func(c *call) {
+			if offerError(c, "no_open_shift", "order_in_progress") {
+				return
+			}
+			body, ok := needsBody(c, "length_s")
+			if !ok {
+				return
+			}
+			length, isNumber := body["length_s"].(float64)
+			if !isNumber || length < 60 || length > 3600 {
+				c.fail(400, "invalid_request", "length_s must be 60 to 3600.", false)
+				return
+			}
+			shift := sampleShift(c.now, false)
+			shift["break"] = map[string]any{"started_at": stamp(c.now), "ends_at": stamp(c.now.Add(time.Duration(length) * time.Second))}
+			c.json(200, map[string]any{"shift": shift})
+		}},
+		{method: "POST", path: "/riders/me/shifts/break/end", handle: func(c *call) {
+			if offerError(c, "no_open_shift") {
+				return
+			}
+			c.json(200, map[string]any{"shift": sampleShift(c.now, false)})
+		}},
+		{method: "POST", path: "/riders/me/shifts/planned-end", handle: func(c *call) {
+			if offerError(c, "no_open_shift") {
+				return
+			}
+			body, ok := needsBody(c, "planned_end_at")
+			if !ok {
+				return
+			}
+			text, _ := body["planned_end_at"].(string)
+			end, err := time.Parse(time.RFC3339Nano, text)
+			// The real API also refuses an end over 16 hours after the start.
+			if err != nil || !end.After(c.now) {
+				c.fail(400, "invalid_request", "planned_end_at must be in the future and within 16 hours of the start.", false)
+				return
+			}
+			shift := sampleShift(c.now, false)
+			shift["planned_end_at"] = stamp(end)
+			c.json(200, map[string]any{"shift": shift})
+		}},
+		{method: "GET", path: "/riders/me/shifts", handle: func(c *call) {
+			if v := c.r.URL.Query().Get("days"); v != "" {
+				if n, err := strconv.Atoi(v); err != nil || n < 1 || n > 31 {
+					c.fail(400, "invalid_request", "days must be 1 to 31.", false)
+					return
+				}
+			}
+			today := sampleShift(c.now, false)
+			yesterday := c.now.Add(-24 * time.Hour)
+			c.json(200, map[string]any{"shifts": []map[string]any{
+				{"id": today["id"], "node_id": today["node_id"], "started_at": today["started_at"], "ended_at": nil, "online_at": today["online_at"],
+					"planned_end_at": today["planned_end_at"], "orders": 1, "portions": 1, "avg_delivery_s": 84},
+				{"id": "shf_mock00", "node_id": "node_mock01", "started_at": stamp(yesterday.Add(-8 * time.Hour)), "ended_at": stamp(yesterday),
+					"online_at": stamp(yesterday.Add(-7*time.Hour - 40*time.Minute)), "planned_end_at": stamp(yesterday), "orders": 12, "portions": 15, "avg_delivery_s": 92},
+			}})
+		}},
+		{method: "GET", path: "/riders/me/documents", handle: func(c *call) {
+			c.json(200, map[string]any{"documents": []map[string]any{
+				{"document": "aadhaar", "side": "front", "content_type": "image/jpeg", "size_bytes": 182344, "uploaded_at": stamp(c.now.Add(-30 * 24 * time.Hour))},
+				{"document": "aadhaar", "side": "back", "content_type": "image/jpeg", "size_bytes": 176012, "uploaded_at": stamp(c.now.Add(-30 * 24 * time.Hour))},
+				{"document": "drivingLicence", "side": "front", "content_type": "image/jpeg", "size_bytes": 201554, "uploaded_at": stamp(c.now.Add(-30 * 24 * time.Hour))},
+			}})
+		}},
+		{method: "POST", path: "/riders/me/documents", handle: func(c *call) {
+			if offerError(c, "already_verified") {
+				return
+			}
+			body, ok := needsBody(c, "document", "side", "content_type", "data_base64")
+			if !ok {
+				return
+			}
+			data, _ := body["data_base64"].(string)
+			photo, err := base64.StdEncoding.DecodeString(data)
+			if err != nil || len(photo) == 0 || len(photo) > 700000 {
+				c.fail(400, "invalid_request", "Send a JPEG, PNG or WebP photo of at most 700 KB.", false)
+				return
+			}
+			c.json(201, map[string]any{"document": map[string]any{"document": body["document"], "side": body["side"],
+				"content_type": body["content_type"], "size_bytes": len(photo), "uploaded_at": stamp(c.now)}})
 		}},
 		{method: "GET", path: "/nodes", handle: func(c *call) {
 			if c.r.URL.Query().Get("zone_id") == "" {
@@ -556,7 +649,7 @@ func riderSessionFields(c *call) map[string]any {
 func sampleRider(now time.Time) map[string]any {
 	return map[string]any{"id": "rdr_mock0001", "name": "Ravi Kumar", "status": "active", "zone_id": "zone_mock01",
 		"created_at": stamp(now.Add(-30 * 24 * time.Hour)), "approved_at": stamp(now.Add(-29 * 24 * time.Hour)),
-		"email": "ravi@example.invalid", "area": map[string]any{"name": "Koramangala", "city": "Bengaluru", "lat": 12.9352, "lng": 77.6245}}
+		"phone": "+919800000001", "email": "ravi@example.invalid", "area": map[string]any{"name": "Koramangala", "city": "Bengaluru", "lat": 12.9352, "lng": 77.6245}}
 }
 
 // sampleShiftPlan is today's plan: starting in an hour, eight hours long. reply is the rider's

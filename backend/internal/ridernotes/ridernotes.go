@@ -20,6 +20,8 @@ const (
 	OrdersWaiting = "orders_waiting"
 	StockRequest  = "stock_request"
 	StockReady    = "stock_ready"
+	// ShiftEndingSoon goes shortly before the planned end.
+	ShiftEndingSoon = "shift_ending_soon"
 )
 
 const (

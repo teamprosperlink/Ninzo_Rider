@@ -121,6 +121,20 @@ components:
                 - device_id
                 - server_time
             type: object
+        DocumentKind:
+            enum:
+                - aadhaar
+                - drivingLicence
+                - vehicleRc
+                - selfie
+                - bank
+            type: string
+        DocumentSide:
+            enum:
+                - front
+                - back
+                - photo
+            type: string
         Done:
             properties:
                 server_time:
@@ -1011,6 +1025,10 @@ components:
                     type:
                         - string
                         - "null"
+                phone:
+                    description: The number the rider signs in with.
+                    pattern: ^\+[1-9][0-9]{7,14}$
+                    type: string
                 status:
                     description: Open list, including applicant, active, suspended.
                     type: string
@@ -1028,6 +1046,7 @@ components:
                 - approved_at
                 - email
                 - area
+                - phone
             type: object
         RiderArea:
             description: A place the rider picked, such as a town or a junction.
@@ -1052,6 +1071,49 @@ components:
                 - city
                 - lat
                 - lng
+            type: object
+        RiderDocumentInfo:
+            properties:
+                content_type:
+                    type: string
+                document:
+                    $ref: '#/components/schemas/DocumentKind'
+                side:
+                    $ref: '#/components/schemas/DocumentSide'
+                size_bytes:
+                    minimum: 1
+                    type: integer
+                uploaded_at:
+                    format: date-time
+                    type: string
+            required:
+                - document
+                - side
+                - content_type
+                - size_bytes
+                - uploaded_at
+            type: object
+        RiderDocumentList:
+            properties:
+                documents:
+                    items:
+                        $ref: '#/components/schemas/RiderDocumentInfo'
+                    type: array
+                server_time:
+                    $ref: '#/components/schemas/ServerTime'
+            required:
+                - documents
+                - server_time
+            type: object
+        RiderDocumentResponse:
+            properties:
+                document:
+                    $ref: '#/components/schemas/RiderDocumentInfo'
+                server_time:
+                    $ref: '#/components/schemas/ServerTime'
+            required:
+                - document
+                - server_time
             type: object
         RiderNotification:
             properties:
@@ -1272,6 +1334,21 @@ components:
             type: string
         Shift:
             properties:
+                break:
+                    description: The break under way, or null. No offers come during it.
+                    oneOf:
+                        - properties:
+                            ends_at:
+                                format: date-time
+                                type: string
+                            started_at:
+                                format: date-time
+                                type: string
+                          required:
+                            - started_at
+                            - ends_at
+                          type: object
+                        - type: "null"
                 device_id:
                     description: The device that started the shift. Null when none was sent. If it is not this phone's device_id, the shift is open on another phone.
                     type:
@@ -1290,6 +1367,12 @@ components:
                     type: string
                 node_id:
                     $ref: '#/components/schemas/Id'
+                online_at:
+                    description: When the rider went online at their spot (goOnline). Null before.
+                    format: date-time
+                    type:
+                        - string
+                        - "null"
                 planned_end_at:
                     description: When the shift is planned to end, from the day's shift plan. Null with no plan.
                     format: date-time
@@ -1328,6 +1411,20 @@ components:
                 - scooter
                 - planned_end_at
                 - device_id
+                - online_at
+                - break
+            type: object
+        ShiftHistory:
+            properties:
+                server_time:
+                    $ref: '#/components/schemas/ServerTime'
+                shifts:
+                    items:
+                        $ref: '#/components/schemas/ShiftRecord'
+                    type: array
+            required:
+                - shifts
+                - server_time
             type: object
         ShiftPlan:
             description: One day's planned shift for the rider, made by operations.
@@ -1396,6 +1493,56 @@ components:
             required:
                 - plan
                 - server_time
+            type: object
+        ShiftRecord:
+            description: One past or open shift, with what was delivered on it.
+            properties:
+                avg_delivery_s:
+                    description: The average seconds from the rider accepting an order to handing it over. Null with no orders.
+                    minimum: 0
+                    type:
+                        - integer
+                        - "null"
+                ended_at:
+                    format: date-time
+                    type:
+                        - string
+                        - "null"
+                id:
+                    $ref: '#/components/schemas/Id'
+                node_id:
+                    $ref: '#/components/schemas/Id'
+                online_at:
+                    format: date-time
+                    type:
+                        - string
+                        - "null"
+                orders:
+                    description: Orders handed over on this shift.
+                    minimum: 0
+                    type: integer
+                planned_end_at:
+                    format: date-time
+                    type:
+                        - string
+                        - "null"
+                portions:
+                    description: Portions handed over on this shift.
+                    minimum: 0
+                    type: integer
+                started_at:
+                    format: date-time
+                    type: string
+            required:
+                - id
+                - node_id
+                - started_at
+                - ended_at
+                - online_at
+                - planned_end_at
+                - orders
+                - portions
+                - avg_delivery_s
             type: object
         ShiftResponse:
             properties:
@@ -2427,6 +2574,88 @@ paths:
             summary: Remove a device from push
             tags:
                 - profile
+    /riders/me/documents:
+        get:
+            description: What was uploaded, one per document and side, without the photos themselves.
+            operationId: listRiderDocuments
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RiderDocumentList'
+                    description: The documents.
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: List the rider's document photos
+            tags:
+                - profile
+        post:
+            description: 'One photo of one side of a document, as base64, at most 700 KB once decoded. A new photo replaces the one before. Operations check them by hand until DigiLocker. Errors: 400 for a bad photo; 409 already_verified.'
+            operationId: uploadRiderDocument
+            parameters:
+                - $ref: '#/components/parameters/IdempotencyKey'
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            example:
+                                content_type: image/jpeg
+                                data_base64: /9j/4AAQ
+                                document: aadhaar
+                                side: front
+                            properties:
+                                content_type:
+                                    enum:
+                                        - image/jpeg
+                                        - image/png
+                                        - image/webp
+                                    type: string
+                                data_base64:
+                                    maxLength: 933336
+                                    minLength: 4
+                                    type: string
+                                document:
+                                    $ref: '#/components/schemas/DocumentKind'
+                                side:
+                                    $ref: '#/components/schemas/DocumentSide'
+                            required:
+                                - document
+                                - side
+                                - content_type
+                                - data_base64
+                            type: object
+                required: true
+            responses:
+                "201":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RiderDocumentResponse'
+                    description: Uploaded.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/IdempotencyKeyReused'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: Upload one document photo
+            tags:
+                - profile
     /riders/me/earnings:
         get:
             description: Orders, incentives and paid repositioning time. Each order handed over earns the zone's rate at the time; the day's incentive comes once the day's orders reach the zone's level; an accepted move is paid by the started minute until it ends, up to a cap. A suspended rider can still see this.
@@ -2778,6 +3007,114 @@ paths:
             summary: Answer the morning stock request
             tags:
                 - shift
+    /riders/me/shifts:
+        get:
+            description: The shifts started in the last `days` days (India time, today included), newest first, each with its times and what was delivered. A suspended rider can still see this.
+            operationId: listShifts
+            parameters:
+                - description: How many days back, today included. Default 7.
+                  in: query
+                  name: days
+                  required: false
+                  schema:
+                    maximum: 31
+                    minimum: 1
+                    type: integer
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ShiftHistory'
+                    description: The shifts.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: List the rider's recent shifts
+            tags:
+                - shift
+    /riders/me/shifts/break:
+        post:
+            description: 'A rider on a break gets no offers until it ends. length_s counts from the break''s start, so sending a longer one extends the break under way. Errors, both 409: no_open_shift, order_in_progress.'
+            operationId: takeBreak
+            parameters:
+                - $ref: '#/components/parameters/IdempotencyKey'
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            example:
+                                length_s: 900
+                            properties:
+                                length_s:
+                                    maximum: 3600
+                                    minimum: 60
+                                    type: integer
+                            required:
+                                - length_s
+                            type: object
+                required: true
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ShiftResponse'
+                    description: On a break.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/IdempotencyKeyReused'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: Take a break, or make the current one longer
+            tags:
+                - shift
+    /riders/me/shifts/break/end:
+        post:
+            description: 'Offers can come again. With no break on, it answers the shift as it is. Error 409: no_open_shift.'
+            operationId: endBreak
+            parameters:
+                - $ref: '#/components/parameters/IdempotencyKey'
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ShiftResponse'
+                    description: Back from the break.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/IdempotencyKeyReused'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: End the break
+            tags:
+                - shift
     /riders/me/shifts/end:
         post:
             description: 'Errors, both 409: no_open_shift, order_in_progress.'
@@ -2806,6 +3143,80 @@ paths:
                 "500":
                     $ref: '#/components/responses/InternalError'
             summary: End the shift
+            tags:
+                - shift
+    /riders/me/shifts/online:
+        post:
+            description: 'Sets online_at once; asking again keeps the first time. Error 409: no_open_shift.'
+            operationId: goOnline
+            parameters:
+                - $ref: '#/components/parameters/IdempotencyKey'
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ShiftResponse'
+                    description: Online.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/IdempotencyKeyReused'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: Say the rider is online at their spot
+            tags:
+                - shift
+    /riders/me/shifts/planned-end:
+        post:
+            description: 'For "Add time". planned_end_at must be in the future and within 16 hours of the shift''s start. Error 409: no_open_shift.'
+            operationId: setPlannedEnd
+            parameters:
+                - $ref: '#/components/parameters/IdempotencyKey'
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            example:
+                                planned_end_at: "2099-01-01T12:00:00Z"
+                            properties:
+                                planned_end_at:
+                                    format: date-time
+                                    type: string
+                            required:
+                                - planned_end_at
+                            type: object
+                required: true
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ShiftResponse'
+                    description: The shift, with its new planned end.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/IdempotencyKeyReused'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: Change when the shift is planned to end
             tags:
                 - shift
     /riders/me/shifts/start:

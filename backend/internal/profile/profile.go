@@ -76,6 +76,8 @@ func (s *Service) MountRider(r chi.Router, signedIn ...Middleware) {
 		g.Get("/riders/me", s.getRider)
 		g.With(idem).Patch("/riders/me", s.updateRider)
 		g.Get("/riders/me/notifications", s.listNotifications)
+		g.Get("/riders/me/documents", s.listDocuments)
+		g.With(idem).Post("/riders/me/documents", s.uploadDocument)
 		g.With(idem).Post("/riders/me/devices", s.registerDevice)
 		g.With(idem).Delete("/riders/me/devices/{device_id}", s.removeDevice)
 		g.Get("/riders/me/verification", s.getVerification)
@@ -273,12 +275,12 @@ func (s *Service) updateCustomer(w http.ResponseWriter, r *http.Request) {
 // ---------- Rider
 
 type riderRow struct {
-	id, status, personStatus string
-	name, zone, email        *string
-	areaName, areaCity       *string
-	areaLat, areaLng         *float64
-	created                  time.Time
-	approved                 *time.Time
+	id, status, personStatus, phone string
+	name, zone, email               *string
+	areaName, areaCity              *string
+	areaLat, areaLng                *float64
+	created                         time.Time
+	approved                        *time.Time
 }
 
 // readRider reads the rider as getRider shows them. approved_at is the newest approval in the audit
@@ -291,10 +293,10 @@ func readRider(ctx context.Context, q interface {
 	err := q.QueryRow(ctx, `SELECT r.id::text, r.name, r.status, p.status, r.zone_id::text, r.created_at,
 			(SELECT max(a.created_at) FROM audit_events a WHERE a.entity_type = 'rider' AND a.entity_id = r.id::text
 				AND a.action IN ('rider.approved', 'rider.approve')),
-			r.email, r.area_name, r.area_city, r.area_lat, r.area_lng
+			r.email, p.phone, r.area_name, r.area_city, r.area_lat, r.area_lng
 		FROM riders r JOIN people p ON p.id = r.person_id WHERE r.id = $1`, id).
 		Scan(&rd.id, &rd.name, &rd.status, &rd.personStatus, &rd.zone, &rd.created, &rd.approved,
-			&rd.email, &rd.areaName, &rd.areaCity, &rd.areaLat, &rd.areaLng)
+			&rd.email, &rd.phone, &rd.areaName, &rd.areaCity, &rd.areaLat, &rd.areaLng)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		err = errGone
@@ -312,7 +314,7 @@ func (rd riderRow) reply() map[string]any {
 	return map[string]any{
 		"rider": map[string]any{"id": rd.id, "name": rd.name, "status": rd.status, "zone_id": rd.zone,
 			"created_at": rd.created.UTC().Format(time.RFC3339Nano), "approved_at": optionalStamp(rd.approved),
-			"email": rd.email, "area": area},
+			"email": rd.email, "phone": rd.phone, "area": area},
 		"server_time": serverTime(),
 	}
 }

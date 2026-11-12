@@ -19,3 +19,4 @@ Accepted decisions are never edited; to reverse one, write a new decision and ma
 | [0012](0012-gate-verification.md) | Gates are verified by the area they are in | Accepted | 2026-11-07 |
 | [0013](0013-v040-answers.md) | Answers before v0.4.0 | Accepted | 2026-11-09 |
 | [0014](0014-v070-to-v0100-answers.md) | Answers for v0.7.0 to v0.10.0: admin-entered rates and hubs, staff sign-in, roles and approvals | Accepted | 2026-11-10 |
+| [0016](0016-rider-documents-in-postgres.md) | Rider document photos are kept in Postgres for the pilot | Proposed | 2026-11-11 |

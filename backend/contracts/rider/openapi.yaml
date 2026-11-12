@@ -502,6 +502,277 @@ paths:
           $ref: ../shared/common.yaml#/components/responses/TooManyRequests
         '500':
           $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/shifts/online:
+    post:
+      tags:
+      - shift
+      operationId: goOnline
+      summary: Say the rider is online at their spot
+      description: 'Sets online_at once; asking again keeps the first time. Error 409: no_open_shift.'
+      parameters:
+      - $ref: ../shared/common.yaml#/components/parameters/IdempotencyKey
+      responses:
+        '200':
+          description: Online.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftResponse'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '409':
+          $ref: ../shared/common.yaml#/components/responses/Conflict
+        '422':
+          $ref: ../shared/common.yaml#/components/responses/IdempotencyKeyReused
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/shifts/break:
+    post:
+      tags:
+      - shift
+      operationId: takeBreak
+      summary: Take a break, or make the current one longer
+      description: 'A rider on a break gets no offers until it ends. length_s counts from the break''s
+        start, so sending a longer one extends the break under way. Errors, both 409: no_open_shift,
+        order_in_progress.'
+      parameters:
+      - $ref: ../shared/common.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - length_s
+              example:
+                length_s: 900
+              properties:
+                length_s:
+                  type: integer
+                  minimum: 60
+                  maximum: 3600
+      responses:
+        '200':
+          description: On a break.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftResponse'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '409':
+          $ref: ../shared/common.yaml#/components/responses/Conflict
+        '422':
+          $ref: ../shared/common.yaml#/components/responses/IdempotencyKeyReused
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/shifts/break/end:
+    post:
+      tags:
+      - shift
+      operationId: endBreak
+      summary: End the break
+      description: 'Offers can come again. With no break on, it answers the shift as it is. Error 409:
+        no_open_shift.'
+      parameters:
+      - $ref: ../shared/common.yaml#/components/parameters/IdempotencyKey
+      responses:
+        '200':
+          description: Back from the break.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftResponse'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '409':
+          $ref: ../shared/common.yaml#/components/responses/Conflict
+        '422':
+          $ref: ../shared/common.yaml#/components/responses/IdempotencyKeyReused
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/shifts/planned-end:
+    post:
+      tags:
+      - shift
+      operationId: setPlannedEnd
+      summary: Change when the shift is planned to end
+      description: 'For "Add time". planned_end_at must be in the future and within 16 hours of the
+        shift''s start. Error 409: no_open_shift.'
+      parameters:
+      - $ref: ../shared/common.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - planned_end_at
+              example:
+                planned_end_at: '2099-01-01T12:00:00Z'
+              properties:
+                planned_end_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: The shift, with its new planned end.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftResponse'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '409':
+          $ref: ../shared/common.yaml#/components/responses/Conflict
+        '422':
+          $ref: ../shared/common.yaml#/components/responses/IdempotencyKeyReused
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/shifts:
+    get:
+      tags:
+      - shift
+      operationId: listShifts
+      summary: List the rider's recent shifts
+      description: The shifts started in the last `days` days (India time, today included), newest
+        first, each with its times and what was delivered. A suspended rider can still see this.
+      parameters:
+      - name: days
+        in: query
+        required: false
+        description: How many days back, today included. Default 7.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 31
+      responses:
+        '200':
+          description: The shifts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftHistory'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+  /riders/me/documents:
+    get:
+      tags:
+      - profile
+      operationId: listRiderDocuments
+      summary: List the rider's document photos
+      description: What was uploaded, one per document and side, without the photos themselves.
+      responses:
+        '200':
+          description: The documents.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiderDocumentList'
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+    post:
+      tags:
+      - profile
+      operationId: uploadRiderDocument
+      summary: Upload one document photo
+      description: 'One photo of one side of a document, as base64, at most 700 KB once decoded. A new
+        photo replaces the one before. Operations check them by hand until DigiLocker. Errors: 400 for a
+        bad photo; 409 already_verified.'
+      parameters:
+      - $ref: ../shared/common.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - document
+              - side
+              - content_type
+              - data_base64
+              example:
+                document: aadhaar
+                side: front
+                content_type: image/jpeg
+                data_base64: /9j/4AAQ
+              properties:
+                document:
+                  $ref: '#/components/schemas/DocumentKind'
+                side:
+                  $ref: '#/components/schemas/DocumentSide'
+                content_type:
+                  type: string
+                  enum:
+                  - image/jpeg
+                  - image/png
+                  - image/webp
+                data_base64:
+                  type: string
+                  minLength: 4
+                  maxLength: 933336
+      responses:
+        '201':
+          description: Uploaded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiderDocumentResponse'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ../shared/common.yaml#/components/responses/Forbidden
+        '409':
+          $ref: ../shared/common.yaml#/components/responses/Conflict
+        '422':
+          $ref: ../shared/common.yaml#/components/responses/IdempotencyKeyReused
+        '429':
+          $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
   /nodes:
     get:
       tags:
@@ -1657,7 +1928,12 @@ components:
       - approved_at
       - email
       - area
+      - phone
       properties:
+        phone:
+          description: The number the rider signs in with.
+          type: string
+          pattern: '^\+[1-9][0-9]{7,14}$'
         id:
           $ref: ../shared/common.yaml#/components/schemas/Id
         name:
@@ -1788,6 +2064,8 @@ components:
       - scooter
       - planned_end_at
       - device_id
+      - online_at
+      - break
       properties:
         id:
           $ref: ../shared/common.yaml#/components/schemas/Id
@@ -1837,6 +2115,27 @@ components:
           type:
           - string
           - 'null'
+        online_at:
+          description: When the rider went online at their spot (goOnline). Null before.
+          type:
+          - string
+          - 'null'
+          format: date-time
+        break:
+          description: The break under way, or null. No offers come during it.
+          oneOf:
+          - type: object
+            required:
+            - started_at
+            - ends_at
+            properties:
+              started_at:
+                type: string
+                format: date-time
+              ends_at:
+                type: string
+                format: date-time
+          - type: 'null'
     ShiftResponse:
       type: object
       required:
@@ -2027,6 +2326,126 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StockLot'
+        server_time:
+          $ref: ../shared/common.yaml#/components/schemas/ServerTime
+    ShiftRecord:
+      type: object
+      description: One past or open shift, with what was delivered on it.
+      required:
+      - id
+      - node_id
+      - started_at
+      - ended_at
+      - online_at
+      - planned_end_at
+      - orders
+      - portions
+      - avg_delivery_s
+      properties:
+        id:
+          $ref: ../shared/common.yaml#/components/schemas/Id
+        node_id:
+          $ref: ../shared/common.yaml#/components/schemas/Id
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        online_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        planned_end_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        orders:
+          description: Orders handed over on this shift.
+          type: integer
+          minimum: 0
+        portions:
+          description: Portions handed over on this shift.
+          type: integer
+          minimum: 0
+        avg_delivery_s:
+          description: The average seconds from the rider accepting an order to handing it over. Null
+            with no orders.
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+    ShiftHistory:
+      type: object
+      required:
+      - shifts
+      - server_time
+      properties:
+        shifts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShiftRecord'
+        server_time:
+          $ref: ../shared/common.yaml#/components/schemas/ServerTime
+    DocumentKind:
+      type: string
+      enum:
+      - aadhaar
+      - drivingLicence
+      - vehicleRc
+      - selfie
+      - bank
+    DocumentSide:
+      type: string
+      enum:
+      - front
+      - back
+      - photo
+    RiderDocumentInfo:
+      type: object
+      required:
+      - document
+      - side
+      - content_type
+      - size_bytes
+      - uploaded_at
+      properties:
+        document:
+          $ref: '#/components/schemas/DocumentKind'
+        side:
+          $ref: '#/components/schemas/DocumentSide'
+        content_type:
+          type: string
+        size_bytes:
+          type: integer
+          minimum: 1
+        uploaded_at:
+          type: string
+          format: date-time
+    RiderDocumentResponse:
+      type: object
+      required:
+      - document
+      - server_time
+      properties:
+        document:
+          $ref: '#/components/schemas/RiderDocumentInfo'
+        server_time:
+          $ref: ../shared/common.yaml#/components/schemas/ServerTime
+    RiderDocumentList:
+      type: object
+      required:
+      - documents
+      - server_time
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/RiderDocumentInfo'
         server_time:
           $ref: ../shared/common.yaml#/components/schemas/ServerTime
     QuarantineResponse:

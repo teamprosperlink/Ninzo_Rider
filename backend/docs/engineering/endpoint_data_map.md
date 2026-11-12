@@ -24,6 +24,7 @@ Each table belongs to one module, and only that module has SQL for it (`project_
 | `identity` | `riders` | Rider profiles, including applicants. `zone_id` is added in v0.3.0, when `zones` exists | v0.2.0 |
 | `identity` | `rider_credentials` | Not used: riders sign in by OTP only. Kept for the phone-lost options | v0.2.0 |
 | `identity` | `rider_verifications` | Document status | v0.2.0 |
+| `identity` | `rider_documents` | The rider's document photos, for checking by hand (decision 0016) | migration 0041 |
 | `identity` | `otp_requests` | Hashed codes, their purpose, and attempts | v0.2.0 |
 | `identity` | `refresh_tokens` | Hashed refresh tokens and their chains | v0.2.0 |
 | `notify` | `devices` | Push tokens | v0.2.0 |
@@ -186,6 +187,13 @@ Until a later table exists, an endpoint simply does not use it: `listNodes` has 
 | `getShiftPlan` | `riders`, `shift_plans`, `zones` | | | |
 | `replyToShiftPlan` | `riders`, `shift_plans` | `shift_plans`, `rider_state`, `audit_events`, `idempotency_keys` | | |
 | `listRiderNotifications` | `rider_notifications` | | | |
+| `goOnline` | `shifts` | `shifts`, `rider_state`, `audit_events`, `idempotency_keys` | | |
+| `takeBreak` | `shifts`, `offers` | `shifts`, `rider_state`, `audit_events`, `idempotency_keys` | | |
+| `endBreak` | `shifts` | `shifts`, `rider_state`, `audit_events`, `idempotency_keys` | | |
+| `setPlannedEnd` | `shifts` | `shifts`, `rider_state`, `audit_events`, `idempotency_keys` | | |
+| `listShifts` | `shifts`, `offers`, `orders`, `order_items` | | | |
+| `listRiderDocuments` | `rider_documents` | | | |
+| `uploadRiderDocument` | `riders`, `rider_verifications` | `rider_documents`, `audit_events`, `idempotency_keys` | | |
 
 ## 4.1 Partner API
 

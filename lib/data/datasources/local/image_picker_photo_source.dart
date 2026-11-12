@@ -5,7 +5,7 @@ import '../../../domain/entities/register_failure.dart';
 import '../../../domain/repositories/photo_source.dart';
 
 /// Document photos from the system camera or gallery, scaled down so each
-/// upload stays well under the 5 MB Storage limit.
+/// upload stays under the rider API's 700 KB a photo.
 class ImagePickerPhotoSource implements PhotoSource {
   ImagePickerPhotoSource([ImagePicker? picker])
     : _picker = picker ?? ImagePicker();
@@ -21,8 +21,8 @@ class ImagePickerPhotoSource implements PhotoSource {
     final file = await _picker.pickImage(
       source: ImageSource.camera,
       preferredCameraDevice: selfie ? CameraDevice.front : CameraDevice.rear,
-      maxWidth: 2000,
-      imageQuality: 80,
+      maxWidth: 1400,
+      imageQuality: 70,
     );
     return file?.path;
   }
@@ -31,8 +31,8 @@ class ImagePickerPhotoSource implements PhotoSource {
   Future<String?> pickFromGallery() async {
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 2000,
-      imageQuality: 80,
+      maxWidth: 1400,
+      imageQuality: 70,
     );
     return file?.path;
   }

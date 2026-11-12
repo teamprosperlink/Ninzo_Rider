@@ -5,6 +5,17 @@ each with its Issue number. Entries are added in the same PR that ships the feat
 
 ## [Unreleased]
 
+### The rider's day and documents on the server (no Issue yet: made in the rider app repo's `backend/` copy)
+- Added: `POST /riders/me/shifts/online` (`goOnline`), `POST /riders/me/shifts/break` (`takeBreak`, also extends one under way), `POST /riders/me/shifts/break/end` (`endBreak`) and `POST /riders/me/shifts/planned-end` (`setPlannedEnd`, "Add time"). The shift carries `online_at` and `break`.
+- Changed: a rider on a break gets no offers: `freeRider` and availability's `reachable` skip them, and taking a break hands an open offer back.
+- Added: `GET /riders/me/shifts?days=` (`listShifts`): each shift's times, orders and portions handed over, and the average seconds from accept to handover.
+- Added: `GET`/`POST /riders/me/documents` (`listRiderDocuments`, `uploadRiderDocument`): document photos as base64 JSON, at most 700 KB, kept in Postgres for the pilot (decision 0016, proposed). The bytes never reach audit rows or stored replies.
+- Added: `phone` on `GET /riders/me`.
+- Added: `internal/push`, an FCM HTTP v1 pusher signed with a service account. customer-api uses it when `FCM_PROJECT_ID` and `FCM_SERVICE_ACCOUNT_FILE` are set, and the log pusher otherwise.
+- Added: timed rider reminders in customer-api (`shifts.RunReminders`): the unanswered stock request 30 minutes before the start, and "Shift ending soon" 15 minutes before the planned end. Each goes once.
+- Added: migration 0041. Not applied to Supabase.
+- Evidence: `go test ./...` passes; the database tests compile but were not run (no local Postgres with PostGIS).
+
 ### Rider app gaps (no Issue yet: made in the rider app repo's `backend/` copy)
 - Added: `PATCH /riders/me` (`updateRider`): the rider's name, `email` and `area` (`name`, `city`, `lat`, `lng`), which the app had kept on the phone. `GET /riders/me` returns `email` and `area`. Audit rows name the fields, never the values.
 - Added: `total` (Money) and `payment_method` (`prepaid`, an open list) on the rider's offer and order. Every order is paid online before it is offered, so there is no cash method.

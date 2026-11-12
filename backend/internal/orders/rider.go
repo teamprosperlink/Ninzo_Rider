@@ -231,7 +231,8 @@ func (s *Service) riderState(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		shift = map[string]any{"id": id, "node_id": node, "started_at": started.UTC().Format(time.RFC3339Nano), "ended_at": nil,
-			"node_assigned_at": f.NodeAssignedAt, "scooter": f.Scooter, "planned_end_at": f.PlannedEndAt, "device_id": f.DeviceID}
+			"node_assigned_at": f.NodeAssignedAt, "scooter": f.Scooter, "planned_end_at": f.PlannedEndAt, "device_id": f.DeviceID,
+			"online_at": f.OnlineAt, "break": f.Break}
 	case !errors.Is(err, pgx.ErrNoRows):
 		s.fail(w, r, err)
 		return

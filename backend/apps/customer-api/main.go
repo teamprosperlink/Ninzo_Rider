@@ -22,8 +22,10 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/ratelimit"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/service"
 	"github.com/teamprosperlink/Ninzo_backend/internal/profile"
+	"github.com/teamprosperlink/Ninzo_backend/internal/push"
 	"github.com/teamprosperlink/Ninzo_backend/internal/relocation"
 	"github.com/teamprosperlink/Ninzo_backend/internal/restock"
+	"github.com/teamprosperlink/Ninzo_backend/internal/shifts"
 )
 
 func main() {
@@ -62,8 +64,18 @@ func main() {
 			go ordering.RunJobs(ctx, 5*time.Second)
 			ordering.MountCustomerStream(r, &orders.Streams{Signer: sessions.Signer})
 			ordering.MountSupport(r, identity.RequireActor(sessions.Signer, identity.TypeCustomer), limits.BySession())
-			// Pushes go through the outbox. The log pusher stands in until FCM is connected.
-			pushes := &outbox.Worker{Pool: d.DB, Handle: ordering.Deliver(orders.LogPusher{Log: d.Log}), Log: d.Log, Topics: orders.PushTopics}
+			// Pushes go through the outbox to FCM once FCM_PROJECT_ID and FCM_SERVICE_ACCOUNT_FILE are
+			// set. Until then the log pusher stands in.
+			var pusher orders.Pusher = orders.LogPusher{Log: d.Log}
+			if project, file := os.Getenv("FCM_PROJECT_ID"), os.Getenv("FCM_SERVICE_ACCOUNT_FILE"); project != "" && file != "" {
+				fcm, err := push.FromFile(project, file)
+				if err != nil {
+					d.Log.Error("push: FCM is set up wrong, so pushes are only logged", "error", err.Error())
+				} else {
+					pusher = fcm
+				}
+			}
+			pushes := &outbox.Worker{Pool: d.DB, Handle: ordering.Deliver(pusher), Log: d.Log, Topics: orders.PushTopics}
 			go pushes.Run(ctx)
 			// Restock's own jobs: the stock check and the expiry of uncollected cassettes. Hub staff do
 			// the hub's part through the partner API; the simulator is for tests only.
@@ -72,6 +84,9 @@ func main() {
 			// Suggested moves toward demand (v0.7.0 part D), in this API with the other passes.
 			moves := &relocation.Service{Pool: d.DB, Log: d.Log}
 			go moves.Run(ctx, 30*time.Second)
+			// Timed rider reminders: the unanswered stock request, and "Shift ending soon".
+			reminders := &shifts.Service{Pool: d.DB, Log: d.Log}
+			go reminders.RunReminders(ctx, time.Minute)
 		},
 	}); err != nil {
 		fmt.Fprintln(os.Stderr, "customer-api:", err)
