@@ -20,3 +20,11 @@ const (
 	// HandoverCodeDigits is the length of the customer's handover code.
 	HandoverCodeDigits = 4
 )
+
+// SignInPause is how long a rider's phone cannot sign in after a code ran out of attempts. The app
+// reads it from Retry-After.
+const SignInPause = 30 * time.Minute
+
+// CancelPayCapPaise is the most a cancelled prepaid order pays the rider for the trip; under it,
+// the order's whole price (the rider app's Navigate 04 and 06).
+const CancelPayCapPaise = 2000

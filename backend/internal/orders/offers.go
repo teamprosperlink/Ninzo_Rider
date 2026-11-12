@@ -112,8 +112,10 @@ func dispatch(ctx context.Context, tx pgx.Tx, orderID string, now time.Time) err
 		}
 	}
 	if scooter == "" {
+		// Busy: a rider with a live offer, or on a break (who gets no offers).
 		rows, err := tx.Query(ctx, `SELECT sh.scooter_id::text FROM shifts sh JOIN offers f ON f.rider_id = sh.rider_id AND f.released_at IS NULL
-			WHERE sh.ended_at IS NULL`)
+			WHERE sh.ended_at IS NULL
+			UNION SELECT sh.scooter_id::text FROM shifts sh WHERE sh.ended_at IS NULL AND sh.break_started_at IS NOT NULL`)
 		if err != nil {
 			return err
 		}

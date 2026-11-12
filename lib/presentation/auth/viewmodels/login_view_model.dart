@@ -45,11 +45,10 @@ class LoginState {
   /// How long sign-in is paused (Login 10), as the server says; null when it didn't.
   final Duration? pausedFor;
 
-  /// [pausedFor] in whole minutes, at least one.
-  int? get pausedMinutes {
-    final wait = pausedFor;
-    if (wait == null) return null;
-    final minutes = (wait.inSeconds / AppLimits.secondsPerMinute).ceil();
+  /// [pausedFor] in whole minutes, at least one. The rider API always sends
+  /// `Retry-After` with a pause.
+  int get pausedMinutes {
+    final minutes = ((pausedFor?.inSeconds ?? 0) / AppLimits.secondsPerMinute).ceil();
     return minutes < 1 ? 1 : minutes;
   }
 

@@ -50,6 +50,9 @@ abstract final class DemoData {
   /// Wrong codes allowed before sign-in pauses (Login 10).
   static const maxWrongCodes = 5;
 
+  /// The demo backend's sign-in pause, sent as Retry-After.
+  static const signInPause = Duration(minutes: 30);
+
   static const riderName = 'Ravi Kumar';
   static const riderSinceYear = 2026, riderSinceMonth = 10;
   static const spotAssignedHour = 9, spotAssignedMinute = 12;

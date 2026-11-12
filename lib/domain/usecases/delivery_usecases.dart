@@ -33,12 +33,12 @@ OrderClock orderClockOf(DeliveryOrder order, DateTime now) {
 
 /// What a cancelled order paid the rider: the order's pay in the day's
 /// earnings ([DeliveryOrder.riderFee], `order_earnings`), nothing the app
-/// works out. Cash shows Navigate 05; UPI Navigate 06 when the pay is the
-/// whole order, Navigate 04 otherwise.
+/// works out. Cash shows Navigate 05; UPI Navigate 06 when the order is under
+/// the rider API's `cancel_pay_cap`, Navigate 04 otherwise.
 CancellationPay cancellationPayOf(DeliveryOrder order) {
   final pay = order.riderFee;
   if (order.payment == OrderPayment.cash) return CancellationPay(CancellationKind.cash, pay);
-  return pay >= order.amount && order.amount > 0
+  return order.amount < OrderRules.cancelPayCap
       ? CancellationPay(CancellationKind.upiFull, pay)
       : CancellationPay(CancellationKind.upiFlat, pay);
 }

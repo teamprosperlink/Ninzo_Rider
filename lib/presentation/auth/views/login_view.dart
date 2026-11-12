@@ -33,27 +33,20 @@ class LoginView extends ConsumerWidget {
 
 /// Login: "Try again in 30 minutes".
 class LoginPausedPage extends StatelessWidget {
-  const LoginPausedPage({super.key, required this.onBackToLogin, this.minutes});
+  const LoginPausedPage({super.key, required this.onBackToLogin, required this.minutes});
 
   final VoidCallback onBackToLogin;
 
-  /// The server's wait (`Retry-After`) in minutes; null when it gave none.
-  final int? minutes;
+  /// The server's wait (`Retry-After`) in minutes: 30 for the rider API's sign-in pause.
+  final int minutes;
 
   @override
-  Widget build(BuildContext context) {
-    final minutes = this.minutes;
-    if (minutes == null) return _page(AppStrings.tryAgainShortly, AppStrings.signInIsPausedShortly);
-    final span = AppStrings.minutesSpan(minutes);
-    return _page(AppStrings.tryAgainIn(span), AppStrings.signInIsPausedFor(span));
-  }
-
-  Widget _page(String title, String body) => RiderArtPage(
+  Widget build(BuildContext context) => RiderArtPage(
     art: const RiderArtTile(icon: Icons.hourglass_empty_rounded, iconColor: RiderColors.white),
     overline: AppStrings.takingAShortPause,
-    title: title,
+    title: AppStrings.tryAgainInMinutes(minutes),
     titleStyle: RiderText.h3,
-    body: body,
+    body: AppStrings.signInIsPausedFor(minutes),
     benefits: const [AppStrings.yourAccountAndEarningsAreSafe],
     actions: [RiderButton.ghost(AppStrings.backToLogin, onPressed: onBackToLogin)],
   );

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"math/big"
 	"regexp"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/audit"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/config"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/database"
+	"github.com/teamprosperlink/Ninzo_backend/internal/riderrules"
 )
 
 const (
@@ -143,6 +145,13 @@ func (o *OTPs) request(ctx context.Context, actorType, phone, purpose, requested
 		if recent >= otpPerHour {
 			return &RetryAfterError{Err: ErrResendLimit, Seconds: int(hourEnds) + 1}
 		}
+		// A rider whose last code ran out of attempts waits out the pause.
+		if paused, err := SignInPausedFor(ctx, tx, actorType, phone); err != nil || paused > 0 {
+			if err != nil {
+				return err
+			}
+			return &RetryAfterError{Err: ErrOTPAttempts, Seconds: paused}
+		}
 		if wait > 0 {
 			return &RetryAfterError{Err: ErrResendLimit, Seconds: int(wait) + 1}
 		}
@@ -253,6 +262,24 @@ func (o *OTPs) verify(ctx context.Context, actorType, requestID, code string, sw
 	return out, nil
 }
 
+// SignInPausedFor is the whole seconds left of a rider's sign-in pause on phone, 0 when there is
+// none. Customers have no pause: theirs is the code's own limit.
+func SignInPausedFor(ctx context.Context, q interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, actorType, phone string) (int, error) {
+	if actorType != TypeRider {
+		return 0, nil
+	}
+	var left float64
+	err := q.QueryRow(ctx, `SELECT COALESCE(EXTRACT(EPOCH FROM max(locked_at) + make_interval(secs => $3) - now()), 0)::float8
+		FROM otp_requests WHERE actor_type = $1 AND phone = $2 AND locked_at IS NOT NULL`,
+		actorType, phone, riderrules.SignInPause.Seconds()).Scan(&left)
+	if err != nil || left <= 0 {
+		return 0, err
+	}
+	return int(math.Ceil(left)), nil
+}
+
 // checkCode checks a code and uses it up. A wrong code's attempt must commit, so the caller treats
 // the refusal as a result and not an error. requestedBy must match for a phone verification code.
 func (o *OTPs) checkCode(ctx context.Context, tx pgx.Tx, actorType, purpose, requestedBy, requestID, code string) (string, error, error) {
@@ -273,10 +300,21 @@ func (o *OTPs) checkCode(ctx context.Context, tx pgx.Tx, actorType, purpose, req
 	case expired:
 		return "", ErrOTPExpired, nil
 	case attempts >= otpMaxAttempts:
+		// A rider waits out the pause; the reply says how long (Retry-After).
+		if paused, err := SignInPausedFor(ctx, tx, actorType, phone); err != nil || paused > 0 {
+			if err != nil {
+				return "", nil, err
+			}
+			return "", &RetryAfterError{Err: ErrOTPAttempts, Seconds: paused}, nil
+		}
 		return "", ErrOTPAttempts, nil
 	}
 	if !hmac.Equal([]byte(hash), []byte(o.hash(phone, code))) {
-		if _, err := tx.Exec(ctx, "UPDATE otp_requests SET attempts = attempts + 1 WHERE id = $1::uuid", requestID); err != nil {
+		// A rider's last attempt locks the code, which pauses their sign-in (SignInPausedFor).
+		// A customer's code is unchanged.
+		if _, err := tx.Exec(ctx, `UPDATE otp_requests SET attempts = attempts + 1,
+				locked_at = CASE WHEN $3 AND attempts + 1 >= $2 THEN now() ELSE locked_at END WHERE id = $1::uuid`,
+			requestID, otpMaxAttempts, actorType == TypeRider); err != nil {
 			return "", nil, err
 		}
 		return "", ErrInvalidOTP, nil

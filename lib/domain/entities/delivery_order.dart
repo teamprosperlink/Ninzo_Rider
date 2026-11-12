@@ -165,6 +165,9 @@ class OrderClock {
 }
 
 abstract final class OrderRules {
+  /// Rupees: the most a cancelled prepaid order pays for the trip (`cancel_pay_cap`).
+  static int get cancelPayCap => RiderSettings.current.cancelPayCap;
+
   /// From assignment to the customer: the zone's timer (`timer_length_s`).
   static Duration get window => RiderSettings.current.timerLength;
 }

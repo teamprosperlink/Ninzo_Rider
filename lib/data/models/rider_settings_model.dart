@@ -24,6 +24,10 @@ RiderSettings riderSettingsFromJson(Map<String, dynamic> json, {RiderSettings fa
     breakExtension: seconds('break_extension_s', fallback.breakExtension),
     notAtGateAfter: seconds('not_at_gate_after_s', fallback.notAtGateAfter),
     handoverCodeLength: n('handover_code_length') ?? fallback.handoverCodeLength,
+    cancelPayCap: switch ((json['cancel_pay_cap'] as Map<String, dynamic>?)?['amount_minor']) {
+      final num paise => paise ~/ 100,
+      _ => fallback.cancelPayCap,
+    },
     timerLength: n('timer_length_s') == null ? fallback.timerLength : Duration(seconds: n('timer_length_s')!),
     arriveMeters: n('arrive_m')?.toDouble() ?? fallback.arriveMeters,
     almostThereMeters: n('almost_there_m')?.toDouble() ?? fallback.almostThereMeters,

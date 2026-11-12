@@ -136,6 +136,10 @@ func (o *OTPs) handleRequest(actorType string) http.HandlerFunc {
 		switch {
 		case errors.Is(err, ErrBadPhone):
 			httpserver.WriteError(w, http.StatusBadRequest, "invalid_request", "That phone number is not valid.", false)
+		case errors.Is(err, ErrOTPAttempts):
+			// A rider's sign-in is paused after a code ran out of attempts.
+			w.Header().Set("Retry-After", strconv.Itoa(retryAfter(err, otpResendAfter)))
+			httpserver.WriteError(w, http.StatusTooManyRequests, "otp_attempts_exceeded", "Sign-in is paused. Try again later.", false)
 		case errors.As(err, &wait):
 			w.Header().Set("Retry-After", strconv.Itoa(wait.Seconds))
 			httpserver.WriteError(w, http.StatusTooManyRequests, "otp_resend_limit", "Too many codes requested.", true)
@@ -177,7 +181,7 @@ func (o *OTPs) handleVerify(actorType string) http.HandlerFunc {
 		case errors.Is(err, ErrOTPExpired):
 			httpserver.WriteError(w, http.StatusBadRequest, "otp_expired", "That code has expired.", false)
 		case errors.Is(err, ErrOTPAttempts):
-			w.Header().Set("Retry-After", strconv.Itoa(int(otpResendAfter.Seconds())))
+			w.Header().Set("Retry-After", strconv.Itoa(retryAfter(err, otpResendAfter)))
 			httpserver.WriteError(w, http.StatusTooManyRequests, "otp_attempts_exceeded", "Too many wrong codes. Ask for a new one.", false)
 		case errors.Is(err, ErrAccountBlocked):
 			httpserver.WriteJSON(w, http.StatusForbidden, map[string]any{
@@ -326,4 +330,13 @@ func MountPhoneVerification(r chi.Router, o *OTPs, signer Signer) {
 			}
 		})
 	})
+}
+
+// retryAfter is the seconds a RetryAfterError gives, or def.
+func retryAfter(err error, def time.Duration) int {
+	var wait *RetryAfterError
+	if errors.As(err, &wait) && wait.Seconds > 0 {
+		return wait.Seconds
+	}
+	return int(def.Seconds())
 }

@@ -336,10 +336,6 @@ abstract final class AppStrings {
   static const tellUsWhatSHappening = 'Tell us what’s happening';
   static const hubManager = 'Hub manager';
   static const sendFeedback = 'Send feedback';
-  static const feedbackHint = 'Tell us what would make the app better';
-  static const feedbackSend = 'Send';
-  static const feedbackThanks = 'Thanks, we’ve got it';
-  static const feedbackFailed = 'Couldn’t send. Try again.';
   static const helpUsImproveTheApp = 'Help us improve the app';
   static const mySpot = 'My spot';
   static const navigateToSpot = 'Navigate to spot';
@@ -444,6 +440,7 @@ abstract final class AppStrings {
   static const reason = 'Reason';
   static const backToYourSpot = 'Back to your spot';
   static String theCustomerCancelledThisOrderYou(Object? p0) => 'The customer cancelled this order. You’re paid ₹$p0 for the trip. Head back to your spot for the next one.';
+  static String theCustomerCancelledThisOrderIt(Object? p0) => 'The customer cancelled this order. It was under ₹$p0, so you’re paid the full order amount. Head back to your spot for the next one.';
   static const orderValue = 'Order value';
   static const cancelled = 'Cancelled';
   static const tripPay = 'Trip pay';
@@ -619,11 +616,8 @@ abstract final class AppStrings {
   static const sealedFresh = 'Sealed & fresh';
   static const yourMobileNumberIsVerified = 'Your mobile number is verified.';
   static const takingAShortPause = 'Taking a short pause';
-  static const tryAgainShortly = 'Try again shortly';
-  static String tryAgainIn(Object? p0) => 'Try again in $p0';
-  static String minutesSpan(int n) => n == 1 ? '1 minute' : '$n minutes';
-  static String signInIsPausedFor(Object? p0) => 'Sign-in is paused to keep your account safe. Come back in $p0 and you’re good to go.';
-  static const signInIsPausedShortly = 'Sign-in is paused for a few minutes to keep your account safe. Come back shortly and you’re good to go.';
+  static String tryAgainInMinutes(Object? p0) => 'Try again in $p0 minutes';
+  static String signInIsPausedFor(Object? p0) => 'Sign-in is paused for a few minutes to keep your account safe. Come back in $p0 minutes and you’re good to go.';
   static const yourAccountAndEarningsAreSafe = 'Your account and earnings are safe';
   static const backToLogin = 'Back to login';
   static const almostThereEnterAll10Digits = 'Almost there! Enter all 10 digits, starting with 6, 7, 8 or 9.';

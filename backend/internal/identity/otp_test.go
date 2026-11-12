@@ -874,3 +874,41 @@ func TestAnOutageDuringSignInIsRetryable(t *testing.T) {
 		}
 	}
 }
+
+// The rider app's design: after a code runs out of attempts, a rider's sign-in pauses for 30
+// minutes and the reply says how long. A customer's sign-in is as it was.
+func TestARiderSignInPausesAfterTooManyWrongCodes(t *testing.T) {
+	f := newOTPFixture(t)
+	ctx := context.Background()
+	for _, who := range []string{TypeRider, TypeCustomer} {
+		req, err := f.o.Request(ctx, who, phoneA)
+		if err != nil {
+			t.Fatalf("%s: %v", who, err)
+		}
+		for i := 0; i < otpMaxAttempts; i++ {
+			_, _ = f.o.Verify(ctx, who, req.ID, "000000")
+		}
+		_, err = f.o.Verify(ctx, who, req.ID, testCode)
+		var wait *RetryAfterError
+		paused, perr := SignInPausedFor(ctx, f.o.Pool, who, phoneA)
+		if perr != nil {
+			t.Fatal(perr)
+		}
+		switch who {
+		case TypeRider:
+			if !errors.Is(err, ErrOTPAttempts) || !errors.As(err, &wait) || wait.Seconds < 1790 || wait.Seconds > 1800 {
+				t.Errorf("rider: %v", err)
+			}
+			if paused < 1790 || paused > 1800 {
+				t.Errorf("rider pause %d", paused)
+			}
+			if _, err := f.o.Request(ctx, who, phoneA); !errors.Is(err, ErrOTPAttempts) {
+				t.Errorf("a new code during the pause: %v", err)
+			}
+		case TypeCustomer:
+			if !errors.Is(err, ErrOTPAttempts) || errors.As(err, &wait) || paused != 0 {
+				t.Errorf("customer: %v, pause %d", err, paused)
+			}
+		}
+	}
+}

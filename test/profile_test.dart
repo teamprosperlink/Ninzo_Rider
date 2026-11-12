@@ -222,9 +222,8 @@ void main() {
       await settle(tester);
       await tapText(tester, 'Help centre');
       expect(find.text('How do I go online?'), findsOneWidget);
+      // No frame draws an answer.
       expect(find.text('Ride to your spot.'), findsNothing);
-      await tapText(tester, 'How do I go online?');
-      expect(find.text('Ride to your spot.'), findsOneWidget);
 
       await tapText(tester, 'Contact us');
       await tapText(tester, 'Report a problem');

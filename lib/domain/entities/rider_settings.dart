@@ -30,6 +30,7 @@ class RiderSettings {
     this.breakExtension = const Duration(minutes: 15),
     this.notAtGateAfter = const Duration(seconds: 15),
     this.handoverCodeLength = 4,
+    this.cancelPayCap = 20,
   });
 
   /// When, before the planned start, the stock request is asked, and when an
@@ -48,6 +49,9 @@ class RiderSettings {
 
   /// Digits in the customer's handover code.
   final int handoverCodeLength;
+
+  /// Rupees: the most a cancelled prepaid order pays for the trip (Navigate 04, 06).
+  final int cancelPayCap;
 
   /// The order's visible timer.
   final Duration timerLength;

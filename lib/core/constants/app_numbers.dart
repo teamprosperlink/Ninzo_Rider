@@ -1,11 +1,6 @@
 /// Counts and unit conversions the screens use.
 abstract final class AppLimits {
   static const phoneDigits = 10;
-
-  /// Send feedback's box: the API takes up to 2000 characters.
-  static const feedbackMaxChars = 2000;
-  static const feedbackMinLines = 3;
-  static const feedbackMaxLines = 6;
   static const millisPerSecond = 1000;
   static const metersPerKm = 1000;
   static const secondsPerMinute = 60;

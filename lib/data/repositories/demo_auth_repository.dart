@@ -38,13 +38,16 @@ class DemoAuthRepository implements AuthRepository {
   @override
   Future<void> verifyOtp({required String verificationId, required String code}) async {
     await Future<void>.delayed(const Duration(milliseconds: 800));
-    if (_wrong >= DemoData.maxWrongCodes) throw const AuthFailure(AuthFailureKind.tooManyAttempts);
+    if (_wrong >= DemoData.maxWrongCodes) throw const AuthFailure(AuthFailureKind.tooManyAttempts, null, DemoData.signInPause);
     if (DateTime.now().difference(_sentAt!) > DemoData.codeLifetime) {
       throw const AuthFailure(AuthFailureKind.codeExpired);
     }
     if (code != DemoData.otp) {
       _wrong++;
-      throw AuthFailure(_wrong >= DemoData.maxWrongCodes ? AuthFailureKind.tooManyAttempts : AuthFailureKind.wrongCode);
+      // The demo plays the rider API: its pause comes as Retry-After.
+      throw _wrong >= DemoData.maxWrongCodes
+          ? const AuthFailure(AuthFailureKind.tooManyAttempts, null, DemoData.signInPause)
+          : const AuthFailure(AuthFailureKind.wrongCode);
     }
     _wrong = 0;
     _changes.add(_user = AuthUser(uid: DemoData.uidFor(_phone!), phone: _phone!));

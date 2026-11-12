@@ -118,6 +118,7 @@ func (s *Service) getRiderSettings(w http.ResponseWriter, r *http.Request) {
 			"break_extension_s":               int(riderrules.BreakExtension.Seconds()),
 			"not_at_gate_after_s":             int(riderrules.NotAtGateAfter.Seconds()),
 			"handover_code_length":            riderrules.HandoverCodeDigits,
+			"cancel_pay_cap":                  map[string]any{"amount_minor": riderrules.CancelPayCapPaise, "currency": "INR"},
 		},
 		"server_time": serverTime(),
 	})

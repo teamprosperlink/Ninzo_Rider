@@ -1363,6 +1363,9 @@ components:
                     items:
                         type: integer
                     type: array
+                cancel_pay_cap:
+                    $ref: '#/components/schemas/Money'
+                    description: The most a cancelled prepaid order pays for the trip; under it, the order's price.
                 checklist:
                     items:
                         $ref: '#/components/schemas/RiderChoice'
@@ -1427,6 +1430,7 @@ components:
                 - break_extension_s
                 - not_at_gate_after_s
                 - handover_code_length
+                - cancel_pay_cap
                 - timer_length_s
                 - arrive_m
                 - almost_there_m

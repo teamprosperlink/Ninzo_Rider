@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -56,6 +57,8 @@ func main() {
 			moves.MountRider(r, identity.RequireActor(sessions.Signer, identity.TypeRider), limits.BySession())
 			pay := &earnings.Service{Pool: d.DB, Log: d.Log}
 			pay.MountRider(r, identity.RequireActor(sessions.Signer, identity.TypeRider), limits.BySession())
+			// Timed rider reminders: the unanswered stock request, and "Shift ending soon".
+			go work.RunReminders(ctx, time.Minute)
 		},
 	}); err != nil {
 		fmt.Fprintln(os.Stderr, "rider-api:", err)
