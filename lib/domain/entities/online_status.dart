@@ -1,4 +1,5 @@
 import 'restock.dart';
+import 'rider_settings.dart';
 import 'shift.dart';
 import '../../core/constants/app_strings.dart';
 
@@ -186,17 +187,39 @@ class ItemLeft {
   final int left;
 }
 
-/// How long a break lasts (Shift 43).
-enum BreakOption {
-  min15(Duration(minutes: 15), AppStrings.text15Min2),
-  min30(Duration(minutes: 30), AppStrings.text30Min),
-  min45(Duration(minutes: 45), AppStrings.text45Min),
-  hr1(Duration(hours: 1), AppStrings.text1Hr);
+/// "15 min", "1 hr", "2 hrs": a break or Add time length as the design writes it.
+String lengthLabel(Duration d) => d.inMinutes < 60
+    ? AppStrings.min(d.inMinutes)
+    : (d.inHours == 1 ? AppStrings.text1Hr : AppStrings.hrs(d.inHours));
 
-  const BreakOption(this.duration, this.label);
+/// How long a break lasts (Shift 43). The lengths offered are the rider
+/// API's (`break_options_s`).
+class BreakOption {
+  const BreakOption(this.duration);
 
   final Duration duration;
-  final String label;
+  String get label => lengthLabel(duration);
+
+  static const min15 = BreakOption(Duration(minutes: 15));
+  static const min30 = BreakOption(Duration(minutes: 30));
+  static const min45 = BreakOption(Duration(minutes: 45));
+  static const hr1 = BreakOption(Duration(hours: 1));
+
+  static List<BreakOption> get values => RiderSettings.current.breakOptions;
+
+  /// Shift 43's "Lunch breaks can be … to …": the shortest offered of 30 min
+  /// or more (or the shortest, if none is), and the longest.
+  static (BreakOption, BreakOption) get lunchRange {
+    final all = values;
+    final lunch = all.where((b) => b.duration >= const Duration(minutes: 30)).firstOrNull ?? all.first;
+    return (lunch, all.last);
+  }
+
+  @override
+  bool operator ==(Object other) => other is BreakOption && other.duration == duration;
+
+  @override
+  int get hashCode => duration.hashCode;
 }
 
 /// A break under way. Time up (Shift 45) changes nothing by itself: orders
@@ -281,8 +304,8 @@ class ScooterStock {
   /// Portions still on the scooter, e.g. 6.
   final int portionsLeft;
 
-  /// Low-stock banner at this many items or fewer.
-  static const lowStockAt = 5;
+  /// Low-stock banner at this many items or fewer: the zone's `low_stock_qty`.
+  static int get lowStockAt => RiderSettings.current.lowStockQty;
 
   bool get isLow => portionsLeft <= lowStockAt;
 
@@ -292,20 +315,29 @@ class ScooterStock {
   int get shown => isLow ? portionsLeft : kinds;
 }
 
-/// How long Keep riding adds (Shift 33).
-enum AddTimeOption {
-  min15(Duration(minutes: 15), AppStrings.text15Min2),
-  min30(Duration(minutes: 30), AppStrings.text30Min),
-  min45(Duration(minutes: 45), AppStrings.text45Min),
-  hr1(Duration(hours: 1), AppStrings.text1Hr),
-  hrs2(Duration(hours: 2), AppStrings.text2Hrs),
-  hrs3(Duration(hours: 3), AppStrings.text3Hrs),
-  hrs4(Duration(hours: 4), AppStrings.text4Hrs);
-
-  const AddTimeOption(this.duration, this.label);
+/// How long Keep riding adds (Shift 33). The lengths offered are the rider
+/// API's (`add_time_options_s`).
+class AddTimeOption {
+  const AddTimeOption(this.duration);
 
   final Duration duration;
-  final String label;
+  String get label => lengthLabel(duration);
+
+  static const min15 = AddTimeOption(Duration(minutes: 15));
+  static const min30 = AddTimeOption(Duration(minutes: 30));
+  static const min45 = AddTimeOption(Duration(minutes: 45));
+  static const hr1 = AddTimeOption(Duration(hours: 1));
+  static const hrs2 = AddTimeOption(Duration(hours: 2));
+  static const hrs3 = AddTimeOption(Duration(hours: 3));
+  static const hrs4 = AddTimeOption(Duration(hours: 4));
+
+  static List<AddTimeOption> get values => RiderSettings.current.addTimeOptions;
+
+  @override
+  bool operator ==(Object other) => other is AddTimeOption && other.duration == duration;
+
+  @override
+  int get hashCode => duration.hashCode;
 }
 
 /// The banner over the main map; one at a time, see SelectOnlineAlert.

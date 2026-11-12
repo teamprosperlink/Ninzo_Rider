@@ -284,6 +284,7 @@ abstract final class AppStrings {
   static const distance = 'Distance';
   static const rideTime = 'Ride time';
   static String min(Object? p0) => '$p0 min';
+  static String hrs(Object? p0) => '$p0 hrs';
   static const orders = 'Orders';
   static String onlyLeft(Object? p0) => 'Only $p0 left';
   static String planARefillSoonHeadBack(Object? p0) => 'Plan a refill soon. Head back to $p0 when you’re free.';
@@ -335,6 +336,10 @@ abstract final class AppStrings {
   static const tellUsWhatSHappening = 'Tell us what’s happening';
   static const hubManager = 'Hub manager';
   static const sendFeedback = 'Send feedback';
+  static const feedbackHint = 'Tell us what would make the app better';
+  static const feedbackSend = 'Send';
+  static const feedbackThanks = 'Thanks, we’ve got it';
+  static const feedbackFailed = 'Couldn’t send. Try again.';
   static const helpUsImproveTheApp = 'Help us improve the app';
   static const mySpot = 'My spot';
   static const navigateToSpot = 'Navigate to spot';
@@ -371,7 +376,7 @@ abstract final class AppStrings {
   static String packOrder(Object? p0) => 'Pack order #$p0';
   static const tickAllItemsToContinue = 'Tick all items to continue';
   static const packedGo = 'Packed – go';
-  static const text90SecStartsWhenYouMove = '90 sec starts when you move';
+  static String secStartsWhenYouMove(Object? p0) => '$p0 sec starts when you move';
   static const takeFromTheHotBox = 'Take from the hot box';
   static const bagSealed = 'Bag sealed';
   static const foldAndPressTheSeal = 'Fold and press the seal';
@@ -443,7 +448,6 @@ abstract final class AppStrings {
   static const cancelled = 'Cancelled';
   static const tripPay = 'Trip pay';
   static const theCustomerCancelledThisCashOrder = 'The customer cancelled this cash order. Cash orders have no cancellation charge, so there’s no trip pay this time. Head back to your spot for the next one.';
-  static String theCustomerCancelledThisOrderIt(Object? p0) => 'The customer cancelled this order. It was under ₹$p0, so you’re paid the full order amount. Head back to your spot for the next one.';
   static const orderCancelled = 'Order cancelled';
   static String confirmed(Object? p0) => '$p0 confirmed';
   static const youReAtTheGateHand = 'You’re at the gate. Hand over the order next.';
@@ -475,7 +479,8 @@ abstract final class AppStrings {
   static const takeABreak = 'Take a break';
   static const howLong = 'How long?';
   static const ordersPauseWhileYouRestWe = 'Orders pause while you rest. We’ll remind you when it’s over.';
-  static const lunchBreaksCanBe30Min = 'Lunch breaks can be 30 min to 1 hr';
+  static String lunchBreaksCanBe(Object? p0, Object? p1) => 'Lunch breaks can be $p0 to $p1';
+  static String plus(Object? p0) => '+$p0';
   static const startBreak = 'Start break';
   static const breakOver = 'Break over';
   static const onABreak = 'On a break';
@@ -485,7 +490,6 @@ abstract final class AppStrings {
   static const ordersArePausedWeLlNudge = 'Orders are paused. We’ll nudge you when your break ends.';
   static String overYourMinBreak(Object? p0) => 'over your $p0 min break';
   static String ofMinBreak(Object? p0) => 'of $p0 min break';
-  static const text15Min = '+15 min';
   static const backOnline = 'Back online';
   static const demoTimeUp = 'Demo: Time up';
   static const whereToWait = 'Where to wait';
@@ -605,18 +609,21 @@ abstract final class AppStrings {
   static const takesAbout20Seconds = 'Takes about 20 seconds';
   static const ninzo = 'Ninzo';
   static const hotFood90Seconds = 'HOT FOOD. 90 SECONDS.';
-  static const deliverHotFoodIn90Seconds = 'Deliver hot food in 90 seconds';
+  static String deliverHotFoodIn(Object? p0) => 'Deliver hot food in $p0 seconds';
   static const waitAtYourSpotWithFood = 'Wait at your spot with food already on the scooter. Orders land seconds from the gate.';
   static const newRiderRegister = 'New rider? Register';
   static const byContinuingYouAgreeToOur = 'By continuing you agree to our Terms & Privacy Policy';
   static const heroPhoto = 'HERO PHOTO';
   static const riderScooterBox = 'rider + scooter box';
-  static const hotIn90Sec = 'Hot in 90 sec';
+  static String hotIn(Object? p0) => 'Hot in $p0 sec';
   static const sealedFresh = 'Sealed & fresh';
   static const yourMobileNumberIsVerified = 'Your mobile number is verified.';
   static const takingAShortPause = 'Taking a short pause';
-  static const tryAgainIn30Minutes = 'Try again in 30 minutes';
-  static const signInIsPausedForA = 'Sign-in is paused for a few minutes to keep your account safe. Come back in 30 minutes and you’re good to go.';
+  static const tryAgainShortly = 'Try again shortly';
+  static String tryAgainIn(Object? p0) => 'Try again in $p0';
+  static String minutesSpan(int n) => n == 1 ? '1 minute' : '$n minutes';
+  static String signInIsPausedFor(Object? p0) => 'Sign-in is paused to keep your account safe. Come back in $p0 and you’re good to go.';
+  static const signInIsPausedShortly = 'Sign-in is paused for a few minutes to keep your account safe. Come back shortly and you’re good to go.';
   static const yourAccountAndEarningsAreSafe = 'Your account and earnings are safe';
   static const backToLogin = 'Back to login';
   static const almostThereEnterAll10Digits = 'Almost there! Enter all 10 digits, starting with 6, 7, 8 or 9.';
@@ -833,7 +840,6 @@ abstract final class AppStrings {
   static String arrival(Object? p0) => 'Arrival · $p0';
   static String handover(Object? p0) => 'Handover · #$p0';
   static const stockRequestsBeforeYourShiftAnd = 'Stock requests before your shift and when your stock is ready';
-  static const helpQuestions = [howDoIGoOnline, howDoILoadStockAt, customerIsnTAtTheGate, howAreMyEarningsCounted, howDoIChangeMyShift, scooterHasAFaultWhoDo];
   static const demoShiftEndLabels = [noInternet2, shiftOpenOnAnotherPhone, normalStart];
   static const shortMonths = [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec];
   static String routeInstruction(Object? p0, Object? p1) => 'In $p0, $p1';

@@ -6,7 +6,6 @@ import '../../core/errors/app_exception.dart';
 import '../repositories/stock_repository.dart';
 import '../entities/delivery_order.dart';
 import '../repositories/delivery_repository.dart';
-import '../../core/constants/app_patterns.dart';
 
 /// Watches the order the rider is on.
 class WatchDeliveryOrder {
@@ -32,13 +31,16 @@ OrderClock orderClockOf(DeliveryOrder order, DateTime now) {
   return OrderClock(secondsLeft: math.max(0, (left.inMilliseconds / 1000).ceil()), late: left.isNegative);
 }
 
-/// What a customer's cancellation pays the rider: cash nothing (there's no
-/// cancellation charge), UPI the lesser of ₹20 and the order's price.
+/// What a cancelled order paid the rider: the order's pay in the day's
+/// earnings ([DeliveryOrder.riderFee], `order_earnings`), nothing the app
+/// works out. Cash shows Navigate 05; UPI Navigate 06 when the pay is the
+/// whole order, Navigate 04 otherwise.
 CancellationPay cancellationPayOf(DeliveryOrder order) {
-  if (order.payment == OrderPayment.cash) return const CancellationPay(CancellationKind.cash, 0);
-  return order.amount >= OrderRules.upiCancellationPay
-      ? const CancellationPay(CancellationKind.upiFlat, OrderRules.upiCancellationPay)
-      : CancellationPay(CancellationKind.upiFull, order.amount);
+  final pay = order.riderFee;
+  if (order.payment == OrderPayment.cash) return CancellationPay(CancellationKind.cash, pay);
+  return pay >= order.amount && order.amount > 0
+      ? CancellationPay(CancellationKind.upiFull, pay)
+      : CancellationPay(CancellationKind.upiFlat, pay);
 }
 
 /// The issue to show. Without signal nothing can be rerouted, so that comes
@@ -89,17 +91,11 @@ class ConfirmGate {
   final DeliveryRepository _repository;
   final SignalRepository _signal;
 
-  static final _qr = RegExp(AppPatterns.gateQr);
-  static final _code = RegExp(AppPatterns.fourDigitCode);
-
-  /// Whether the gate is confirmed.
+  /// Whether the gate is confirmed. The code is the gate's own, so only the
+  /// server can say whether it matches (`POST /orders/{id}/gate-check`).
   Future<bool> call(DeliveryOrder order, GateMethod method, String proof) async {
     final value = proof.trim();
-    final valid = switch (method) {
-      GateMethod.qr => _qr.hasMatch(value),
-      GateMethod.code => _code.hasMatch(value),
-    };
-    if (!valid) return false;
+    if (value.isEmpty) return false;
     if (!await _signal.isOnline()) throw const AppException();
     return _repository.confirmGate(order.id, method, value);
   }

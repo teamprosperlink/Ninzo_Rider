@@ -105,9 +105,18 @@ class ApiDeliveryRepository implements DeliveryRepository {
   @override
   Future<void> markReachedGate(String orderId) async {}
 
-  /// No gate check in the API.
+  /// The server checks the gate's QR code or code (`POST /orders/{id}/gate-check`).
+  /// A gate with no code is arrived at by location alone, which the server
+  /// answers as matched.
   @override
-  Future<bool> confirmGate(String orderId, GateMethod method, String proof) async => true;
+  Future<bool> confirmGate(String orderId, GateMethod method, String proof) async {
+    try {
+      final json = await _session.api.checkGate(orderId, method == GateMethod.qr ? 'qr' : 'code', proof);
+      return json['matched'] == true;
+    } on RiderApiException catch (e) {
+      throw AppException(e.code);
+    }
+  }
 
   /// "Can't take this order" (Order 04): `POST /offers/{id}/decline`, no penalty.
   @override
@@ -218,13 +227,8 @@ class ApiProblemReportRepository implements ProblemReportRepository {
 
   @override
   Future<void> send(ProblemReport report) async {
-    final type = switch (report.kind) {
-      ProblemKind.breakdown => 'breakdown',
-      ProblemKind.accident => 'accident',
-      ProblemKind.gateClosed => 'gate_closed',
-      ProblemKind.customerAbsent => 'customer_absent',
-      ProblemKind.unsafeRoute => 'unsafe_route',
-    };
+    // The rider API's own code for the kind (problem_types).
+    final type = report.kind.code;
     final events = _session.events;
     try {
       // Without a way through it goes with the event batch later.

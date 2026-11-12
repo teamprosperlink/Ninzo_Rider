@@ -6,6 +6,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/launcher.dart';
 import '../../../core/utils/time_format.dart';
 import '../../account/viewmodels/account_view_model.dart';
+import '../../auth/providers/auth_state_providers.dart';
 import '../../orders/viewmodels/problem_report_view_model.dart';
 import '../../register/providers/registration_provider.dart';
 import '../../../injection_container.dart';
@@ -89,6 +90,18 @@ class HelpCentreViewModel extends Notifier<HelpTab> {
 
   /// "Report a problem" → Problem 01.
   void reportProblem() => ref.read(problemReportViewModelProvider.notifier).open();
+
+  /// "Send feedback": true once the rider API has it.
+  Future<bool> sendFeedback(String message) async {
+    final uid = ref.read(currentUidProvider);
+    if (uid == null) return false;
+    try {
+      await ref.read(sendFeedbackUseCaseProvider)(uid, message);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 final helpCentreViewModelProvider = NotifierProvider<HelpCentreViewModel, HelpTab>(HelpCentreViewModel.new);

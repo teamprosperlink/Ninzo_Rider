@@ -8,6 +8,7 @@ import '../entities/shift.dart';
 import '../repositories/device_status_repository.dart';
 import '../repositories/shift_repository.dart';
 import '../entities/go_online_result.dart';
+import '../entities/rider_settings.dart';
 
 export '../entities/go_online_result.dart';
 
@@ -55,7 +56,8 @@ class CheckPreShiftItem {
     CheckKind.phoneBattery =>
       await _device.phoneBattery() >= PreShiftCheck.minPhoneBattery ? null : CheckProblem.phoneBatteryLow,
     CheckKind.location => await _device.locationOn() ? null : CheckProblem.locationOff,
-    CheckKind.scooterBattery => shift.scooter.batteryOk ? null : CheckProblem.scooterBatteryLow,
+    // Unknown (no telemetry yet): the rider checks the scooter, and the tick goes with the shift start.
+    CheckKind.scooterBattery => shift.scooter.batteryTooLow ? CheckProblem.scooterBatteryLow : null,
   };
 }
 
@@ -69,6 +71,7 @@ class FinishChecklist {
     if (!ticked.containsAll(PreShiftCheck.values)) {
       throw const AppException();
     }
+    await _repository.recordChecklist(uid, shift.id, ticked);
     await _repository.setPhase(uid, shift.id, ShiftPhase.headingToHub);
   }
 }
@@ -80,7 +83,7 @@ class ArriveAtHub {
   final ShiftRepository _repository;
 
   /// Within this distance of the hub counts as arrived.
-  static const radiusMeters = 100.0;
+  static double get radiusMeters => RiderSettings.current.arriveMeters;
 
   bool isAtHub(Shift shift, LatLng position) =>
       const Distance().as(LengthUnit.Meter, position, shift.hub.point) <= radiusMeters;

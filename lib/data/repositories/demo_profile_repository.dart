@@ -44,4 +44,14 @@ class DemoProfileRepository implements ProfileRepository {
         endedAt: _day(daysAgo).add(Duration(minutes: minutes)),
       ),
   ]);
+
+  /// The demo plays the backend's help centre.
+  @override
+  Stream<List<HelpArticle>> watchHelp(String uid) => Stream.value([
+    for (final (i, (question, answer)) in DemoData.helpArticles.indexed)
+      HelpArticle(id: 'faq_demo$i', question: question, answer: answer),
+  ]);
+
+  @override
+  Future<void> sendFeedback(String uid, String message) async {}
 }

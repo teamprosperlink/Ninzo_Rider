@@ -78,7 +78,10 @@ class PackPage extends ConsumerWidget {
       bottomNote: packed ? null : AppStrings.tickAllItemsToContinue,
       bottom: [RiderButton(AppStrings.packedGo, onPressed: packed ? vm.packed : null)],
       children: [
-        const Align(alignment: Alignment.centerLeft, child: RiderStatusPill(AppStrings.text90SecStartsWhenYouMove, tint: RiderColors.greenPillOnScreen)),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: RiderStatusPill(AppStrings.secStartsWhenYouMove(OrderRules.window.inSeconds), tint: RiderColors.greenPillOnScreen),
+        ),
         const SizedBox(height: AppSizes.s16),
         RiderPanel(
           gap: AppSizes.s16,

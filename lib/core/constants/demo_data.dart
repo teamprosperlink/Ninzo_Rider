@@ -233,11 +233,27 @@ abstract final class DemoData {
   static const gateQr = 'NZG|gate-3', wrongGateQr = 'NZG|gate-9', gateCode = '4821';
 
   /// What the "Customer cancels" pill plays: Navigate 04, 05, 06.
+  /// The demo's help centre (the rider API's comes from `help_articles`).
+  static const List<(String, String)> helpArticles = [
+    (AppStrings.howDoIGoOnline, 'Finish the checklist, ride to your hub, scan your stock, then ride to your spot.'),
+    (AppStrings.howDoILoadStockAt, 'When the hub has packed your stock, scan each lot’s code on the stock screen.'),
+    (AppStrings.customerIsnTAtTheGate, 'Wait at the gate, then use Report a problem and choose Customer absent.'),
+    (AppStrings.howAreMyEarningsCounted, 'You earn for each order handed over, an incentive at the day’s target, and paid moves.'),
+    (AppStrings.howDoIChangeMyShift, 'Use Add time to ride longer today, or call your hub manager.'),
+    (AppStrings.scooterHasAFaultWhoDo, 'Use Report a problem and choose Breakdown, then call your hub manager.'),
+  ];
+
   static const List<(OrderPayment, int)> cancellations = [
     (OrderPayment.upi, 60),
     (OrderPayment.cash, 149),
     (OrderPayment.upi, 16),
   ];
+
+  /// What the demo's backend pays for a cancellation (Navigate 04–06): UPI the
+  /// lesser of ₹20 and the order's price, cash nothing.
+  static int cancellationPay(OrderPayment payment, int amount) =>
+      payment == OrderPayment.cash ? 0 : (amount < _upiCancellationPay ? amount : _upiCancellationPay);
+  static const _upiCancellationPay = 20;
 
   // ── Handover and problem report (Figma Sections 14–15) ──
 

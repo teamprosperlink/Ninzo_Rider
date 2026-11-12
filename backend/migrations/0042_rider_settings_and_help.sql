@@ -36,10 +36,10 @@ ALTER TABLE help_articles ENABLE ROW LEVEL SECURITY;
 INSERT INTO help_articles (app, question, answer, sort_order) VALUES
     ('rider', 'How do I go online?', 'Finish the checklist, ride to your hub, scan your stock onto the scooter, then ride to your spot. Go online unlocks once you are there.', 1),
     ('rider', 'How do I load stock at the hub?', 'When the hub has packed your stock, scan each lot''s code on the stock screen. If a code will not scan, count it by hand.', 2),
-    ('rider', 'Customer isn''t at the gate', 'Wait at the gate, then use Report a problem and choose Customer absent. Support takes it from there.', 3),
+    ('rider', 'Customer isn’t at the gate. What now?', 'Wait at the gate, then use Report a problem and choose Customer absent. Support takes it from there.', 3),
     ('rider', 'How are my earnings counted?', 'You earn for each order handed over, an incentive once you reach the day''s order target, and paid time for each move you accept. Earnings shows each part.', 4),
-    ('rider', 'How do I change my shift?', 'Operations plan your shifts. Use Add time to ride longer today, or call your hub manager to change a planned shift.', 5),
-    ('rider', 'Scooter has a fault, who do I call?', 'Use Report a problem and choose Breakdown, then call your hub manager from Contact us.', 6);
+    ('rider', 'How do I change my shift hours?', 'Operations plan your shifts. Use Add time to ride longer today, or call your hub manager to change a planned shift.', 5),
+    ('rider', 'Scooter has a fault. Who do I call?', 'Use Report a problem and choose Breakdown, then call your hub manager from Contact us.', 6);
 
 -- What riders tell us through Send feedback.
 CREATE TABLE rider_feedback (

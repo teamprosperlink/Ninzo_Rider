@@ -54,17 +54,16 @@ class ChecklistPage extends ConsumerWidget {
     );
   }
 
-  /// The scooter's charge shows only when it's enough, as in the frames.
-  String? _hint(PreShiftCheck check) => switch (check) {
-    PreShiftCheck.helmet => AppStrings.wearYourHelmetAtAllTimes,
-    PreShiftCheck.phoneCharged => AppStrings.atLeastBattery(PreShiftCheck.minPhoneBattery),
-    PreShiftCheck.scooterBattery =>
-      shift.scooter.batteryOk && shift.scooter.batteryPercent != null
+  /// The item's line, from the rider API; the battery items say their level
+  /// from the zone's settings and the scooter's telemetry. An unknown charge
+  /// asks the rider to check it.
+  String? _hint(PreShiftCheck check) => switch (check.kind) {
+    CheckKind.phoneBattery => AppStrings.atLeastBattery(PreShiftCheck.minPhoneBattery),
+    CheckKind.scooterBattery =>
+      shift.scooter.batteryOk
           ? AppStrings.showsEnoughForTheShift(shift.scooter.batteryPercent)
-          : null,
-    PreShiftCheck.location => AppStrings.neededToMatchYouWithNearby,
-    PreShiftCheck.insulatedBox => AppStrings.cleanNoLeaksLidClosesFirmly,
-    PreShiftCheck.scooterClean => AppStrings.boxAndSeatWiped,
+          : (shift.scooter.batteryKnown ? null : AppStrings.atLeastBattery(Scooter.minBatteryPercent)),
+    _ => check.hint,
   };
 
 }

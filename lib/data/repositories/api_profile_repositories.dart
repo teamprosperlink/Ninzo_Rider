@@ -273,6 +273,25 @@ class ApiProfileRepository implements ProfileRepository {
     ],
   );
 
+  /// `GET /riders/me/help`.
+  @override
+  Stream<List<HelpArticle>> watchHelp(String uid) => _session.watch(
+    () => [
+      for (final a in _session.help)
+        HelpArticle(id: a['id'] as String, question: a['question'] as String? ?? '', answer: a['answer'] as String? ?? ''),
+    ],
+  );
+
+  /// `POST /riders/me/feedback`.
+  @override
+  Future<void> sendFeedback(String uid, String message) async {
+    try {
+      await _session.api.sendFeedback(message);
+    } on RiderApiException catch (e) {
+      throw AppException(e.code);
+    }
+  }
+
   /// Each day's shifts (`GET /riders/me/shifts`) with that day's pay
   /// (`GET /riders/me/earnings?date=`). A day with more than one shift reads
   /// from its first online time to its last end.

@@ -5,6 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../domain/entities/rider_settings.dart';
+import '../../models/rider_settings_model.dart';
 import 'rider_api.dart';
 import 'rider_api_client.dart';
 import 'rider_api_stream.dart';
@@ -435,6 +437,7 @@ class RiderApiSession {
       shiftPlan,
       notifications,
       shiftHistory,
+      help,
       documents,
       hubs,
       rider,
@@ -445,7 +448,22 @@ class RiderApiSession {
     return true;
   }
 
+  /// `GET /riders/me/help`: the help centre's questions and answers.
+  List<Map<String, dynamic>> help = const [];
+
   Future<void> _refreshSlow() async {
+    // What the app works by, the zone's own (`GET /riders/me/settings`).
+    try {
+      final json = (await api.getSettings())['settings'] as Map<String, dynamic>?;
+      if (json != null) RiderSettings.current = riderSettingsFromJson(json, fallback: RiderSettings.current);
+    } on RiderApiException {
+      // Keeps the last.
+    }
+    try {
+      help = [...((await api.getHelp())['faq'] as List? ?? const []).cast<Map<String, dynamic>>()];
+    } on RiderApiException {
+      // Keeps the last.
+    }
     final zone = rider?['zone_id'] as String?;
     try {
       final json = await api.listNodes(zoneId: zone);

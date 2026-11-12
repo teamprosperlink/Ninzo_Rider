@@ -39,7 +39,19 @@ class LoginState {
     this.account,
     this.resendAt,
     this.verified = false,
+    this.pausedFor,
   });
+
+  /// How long sign-in is paused (Login 10), as the server says; null when it didn't.
+  final Duration? pausedFor;
+
+  /// [pausedFor] in whole minutes, at least one.
+  int? get pausedMinutes {
+    final wait = pausedFor;
+    if (wait == null) return null;
+    final minutes = (wait.inSeconds / AppLimits.secondsPerMinute).ceil();
+    return minutes < 1 ? 1 : minutes;
+  }
 
   final LoginStep step;
 
@@ -87,7 +99,9 @@ class LoginState {
     RiderAccountInfo? Function()? account,
     DateTime? Function()? resendAt,
     bool? verified,
+    Duration? Function()? pausedFor,
   }) => LoginState(
+    pausedFor: pausedFor == null ? this.pausedFor : pausedFor(),
     step: step ?? this.step,
     phone: phone ?? this.phone,
     keepSignedIn: keepSignedIn ?? this.keepSignedIn,
@@ -201,7 +215,13 @@ class LoginViewModel extends Notifier<LoginState> {
   void _fail(Object e) {
     final kind = e is AuthFailure ? e.kind : AuthFailureKind.unknown;
     if (kind == AuthFailureKind.tooManyAttempts) {
-      state = state.copyWith(step: LoginStep.paused, busy: false, code: '', issue: () => null);
+      state = state.copyWith(
+        step: LoginStep.paused,
+        busy: false,
+        code: '',
+        issue: () => null,
+        pausedFor: () => e is AuthFailure ? e.retryAfter : null,
+      );
       return;
     }
     final issue = switch (kind) {

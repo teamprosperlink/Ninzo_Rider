@@ -7,23 +7,24 @@ import '../repositories/stock_repository.dart';
 import '../entities/online_status.dart';
 import '../repositories/online_repository.dart';
 import '../entities/spot_check.dart';
+import '../entities/rider_settings.dart';
 
 export '../entities/spot_check.dart';
 
 /// How far the rider is from their spot, and what that means.
 abstract final class SpotRules {
   /// Within this the rider has reached the spot and can confirm.
-  static const atSpotMeters = 100.0;
+  static double get atSpotMeters => RiderSettings.current.arriveMeters;
 
   /// Within this the rider is "Almost there" (Shift 22 shows 240 m).
-  static const almostThereMeters = 300.0;
+  static double get almostThereMeters => RiderSettings.current.almostThereMeters;
 
   /// An online rider beyond this is away from the spot (Shift 30 shows
   /// 180 m). Wider than [atSpotMeters] so GPS drift doesn't flicker the alert.
-  static const awayFromSpotMeters = 150.0;
+  static double get awayFromSpotMeters => RiderSettings.current.awayFromSpotMeters;
 
   /// Riding speed for the estimate on Shift 19 (1.2 km: 5 min).
-  static const rideSpeedKmh = 15.0;
+  static double get rideSpeedKmh => RiderSettings.current.rideSpeedKmh;
 
   static double metersBetween(LatLng a, LatLng b) => const Distance().as(LengthUnit.Meter, a, b);
 

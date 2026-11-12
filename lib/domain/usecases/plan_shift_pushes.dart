@@ -1,3 +1,4 @@
+import '../entities/rider_settings.dart';
 import '../entities/shift.dart';
 import '../entities/shift_push.dart';
 import '../entities/push_plan.dart';
@@ -14,8 +15,8 @@ abstract interface class PushTimes {
 class ShiftPushTimes implements PushTimes {
   const ShiftPushTimes();
 
-  static const ask = Duration(hours: 1);
-  static const reminder = Duration(minutes: 30);
+  static Duration get ask => RiderSettings.current.stockAskBefore;
+  static Duration get reminder => RiderSettings.current.stockReminderBefore;
 
   @override
   DateTime askAt(Shift shift) => shift.start.subtract(ask);

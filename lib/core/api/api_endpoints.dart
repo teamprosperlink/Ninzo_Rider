@@ -28,6 +28,9 @@ abstract final class RiderApiEndpoints {
   static const location = '/riders/me/location';
   static const stream = '/riders/me/stream';
   static const notifications = '/riders/me/notifications';
+  static const settings = '/riders/me/settings';
+  static const help = '/riders/me/help';
+  static const feedback = '/riders/me/feedback';
   static const shiftPlan = '/riders/me/shift-plan';
   static const shiftPlanReply = '/riders/me/shift-plan/reply';
 
@@ -57,6 +60,7 @@ abstract final class RiderApiEndpoints {
   static String orderRoute(String orderId) => '/orders/$orderId/route';
   static String orderCall(String orderId) => '/orders/$orderId/call';
   static String handover(String orderId) => '/orders/$orderId/handover';
+  static String gateCheck(String orderId) => '/orders/$orderId/gate-check';
 
   // ── Restock ──
   static const restock = '/restock';

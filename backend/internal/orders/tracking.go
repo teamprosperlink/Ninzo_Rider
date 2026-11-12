@@ -22,6 +22,7 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/database"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/httpserver"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/idempotency"
+	"github.com/teamprosperlink/Ninzo_backend/internal/riderrules"
 )
 
 const (
@@ -59,12 +60,17 @@ func metres(lat1, lng1, lat2, lng2 float64) float64 {
 	return 2 * r * math.Asin(math.Min(1, math.Sqrt(a)))
 }
 
+// newOTP is the customer's handover code: riderrules.HandoverCodeDigits digits, leading zeros kept.
 func newOTP() (string, error) {
-	n, err := rand.Int(rand.Reader, big.NewInt(10000))
+	limit := int64(1)
+	for range riderrules.HandoverCodeDigits {
+		limit *= 10
+	}
+	n, err := rand.Int(rand.Reader, big.NewInt(limit))
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%04d", n.Int64()), nil
+	return fmt.Sprintf("%0*d", riderrules.HandoverCodeDigits, n.Int64()), nil
 }
 
 type ping struct {

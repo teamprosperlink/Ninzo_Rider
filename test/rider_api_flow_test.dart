@@ -1,3 +1,10 @@
+import 'package:ninzo_rider/domain/usecases/break_usecases.dart' show TakeBreak;
+import 'package:ninzo_rider/domain/usecases/online_usecases.dart' show SelectOnlineAlert;
+import 'package:ninzo_rider/domain/usecases/plan_shift_pushes.dart' show ShiftPushTimes;
+import 'package:ninzo_rider/domain/entities/pre_shift_check.dart';
+import 'package:ninzo_rider/domain/entities/rider_settings.dart';
+import 'package:ninzo_rider/domain/usecases/shift_flow_usecases.dart' show ArriveAtHub;
+import 'package:ninzo_rider/domain/usecases/spot_usecases.dart' show SpotRules;
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
@@ -112,6 +119,13 @@ class _Server {
         'plan': plan = {...plan!, 'stock_reply': jsonDecode(request.body)['reply'], 'replied_at': '2026-11-11T06:00:00Z'},
       }),
       ('GET', '/riders/me/notifications') => _json(200, {'notifications': notifications}),
+      ('GET', '/riders/me/settings') when settings != null => _json(200, {'settings': settings}),
+      ('GET', '/riders/me/help') => _json(200, {'faq': help}),
+      ('POST', '/riders/me/feedback') => _json(201, {'feedback_id': 'fbk_1'}),
+      ('POST', '/orders/ord_0001/gate-check') => _json(200, {
+        'checked': gateCode != null,
+        'matched': gateCode == null || jsonDecode(request.body)['value'] == gateCode,
+      }),
       ('GET', '/riders/me/documents') => _json(200, {'documents': uploaded}),
       ('POST', '/riders/me/documents') => () {
         final body = jsonDecode(request.body) as Map<String, dynamic>;
@@ -251,6 +265,11 @@ class _Server {
   /// Today's shift plan (`GET /riders/me/shift-plan`), and the notifications.
   Map<String, dynamic>? plan;
   List<Map<String, dynamic>> notifications = [];
+
+  /// `GET /riders/me/settings` (404 when null), the help centre and the gate's code.
+  Map<String, dynamic>? settings;
+  List<Map<String, dynamic>> help = [];
+  String? gateCode;
 
   /// `GET /riders/me/documents` and `GET /riders/me/shifts`.
   List<Map<String, dynamic>> uploaded = [];
@@ -1260,6 +1279,105 @@ void main() {
       expect(records.last.onlineAt, DateTime.utc(2026, 11, 9, 5, 10).toLocal());
       expect(records.last.endedAt, DateTime.utc(2026, 11, 9, 12).toLocal());
       expect(records.last.earned, 70);
+    });
+
+    group('Settings', () {
+      tearDown(() => RiderSettings.current = RiderSettings.defaults);
+
+      test("The app works by the zone's settings and choices, not its own", () async {
+        server.settings = {
+          'timer_length_s': 120,
+          'arrive_m': 60,
+          'almost_there_m': 250,
+          'away_from_spot_m': 200,
+          'low_stock_qty': 3,
+          'scooter_capacity_qty': 10,
+          'min_phone_battery_pct': 30,
+          'min_scooter_battery_pct': 35,
+          'low_scooter_battery_pct': 15,
+          'ride_speed_kmh': 18,
+          'stock_request_ask_before_s': 5400,
+          'stock_request_reminder_before_s': 1200,
+          'shift_ending_soon_before_s': 600,
+          'break_extension_s': 300,
+          'not_at_gate_after_s': 20,
+          'handover_code_length': 6,
+          'break_options_s': [600, 1200],
+          'add_time_options_s': [1800],
+          'skip_reasons': [
+            {'code': 'rain', 'label': 'Heavy rain'},
+          ],
+          'problem_types': [
+            {'code': 'breakdown', 'label': 'Breakdown', 'hint': 'Scooter won’t run'},
+          ],
+          'checklist': [
+            {'code': 'helmet', 'label': 'Helmet on', 'check': 'manual', 'hint': 'Always'},
+            {'code': 'phoneCharged', 'label': 'Phone charged', 'check': 'phone_battery'},
+          ],
+        };
+        await session.refresh(full: true);
+        expect(OrderRules.window, const Duration(seconds: 120));
+        expect(SpotRules.atSpotMeters, 60);
+        expect(ArriveAtHub.radiusMeters, 60);
+        expect(SpotRules.awayFromSpotMeters, 200);
+        expect(ScooterStock.lowStockAt, 3);
+        expect(RestockRules.scooterHolds, 10);
+        expect(PreShiftCheck.minPhoneBattery, 30);
+        expect(Scooter.minBatteryPercent, 35);
+        expect(Scooter.lowBatteryPercent, 15);
+        expect(SpotRules.rideSpeedKmh, 18);
+        expect(ShiftPushTimes.ask, const Duration(minutes: 90));
+        expect(ShiftPushTimes.reminder, const Duration(minutes: 20));
+        expect(SelectOnlineAlert.endingWindow, const Duration(minutes: 10));
+        expect(TakeBreak.extension, const Duration(minutes: 5));
+        expect(HandoverRules.notAtGateAfter, const Duration(seconds: 20));
+        expect(HandoverRules.codeLength, 6);
+        expect([for (final b in BreakOption.values) b.label], ['10 min', '20 min']);
+        expect([for (final a in AddTimeOption.values) a.label], ['30 min']);
+        expect([for (final s in SkipReason.values) (s.name, s.label)], [('rain', 'Heavy rain')]);
+        expect(ProblemKind.values.single.code, 'breakdown');
+        expect([for (final c in PreShiftCheck.values) (c.name, c.kind, c.hint)], [
+          ('helmet', CheckKind.manual, 'Always'),
+          ('phoneCharged', CheckKind.phoneBattery, null),
+        ]);
+      });
+
+      test('An unknown scooter charge is never taken as enough, nor as too low', () {
+        const unknown = Scooter(plate: 'NZ-1');
+        expect(unknown.batteryOk, isFalse);
+        expect(unknown.batteryTooLow, isFalse);
+        expect(const Scooter(plate: 'NZ-1', batteryPercent: 30).batteryTooLow, isTrue);
+        expect(const Scooter(plate: 'NZ-1', batteryPercent: 80).batteryOk, isTrue);
+      });
+    });
+
+    test('The checklist goes with the shift start; the gate is checked on the server', () async {
+      final shifts = ApiShiftRepository(session);
+      await session.ensureLoaded();
+      final shift = (await shifts.watchToday('rdr_1').first)!;
+      await shifts.recordChecklist('rdr_1', shift.id, {PreShiftCheck.helmet, PreShiftCheck.location});
+      await shifts.setPhase('rdr_1', 'd', ShiftPhase.headingToHub);
+      await shifts.setPhase('rdr_1', 'd', ShiftPhase.atHub);
+      expect(server.bodies('/shifts/start').single['checklist'], unorderedEquals(['helmet', 'location']));
+
+      final delivery = ApiDeliveryRepository(session);
+      expect(await delivery.confirmGate('ord_0001', GateMethod.code, 'anything'), isTrue);
+      server.gateCode = 'GATE-4821';
+      expect(await delivery.confirmGate('ord_0001', GateMethod.code, 'GATE-4820'), isFalse);
+      expect(await delivery.confirmGate('ord_0001', GateMethod.qr, 'GATE-4821'), isTrue);
+      expect(server.bodies('/gate-check').last, {'method': 'qr', 'value': 'GATE-4821'});
+    });
+
+    test('The help centre and Send feedback are the API', () async {
+      server.help = [
+        {'id': 'f1', 'question': 'How do I go online?', 'answer': 'Ride to your spot.'},
+      ];
+      await session.refresh(full: true);
+      final profile = ApiProfileRepository(session);
+      final help = await profile.watchHelp('rdr_1').first;
+      expect([for (final a in help) (a.question, a.answer)], [('How do I go online?', 'Ride to your spot.')]);
+      await profile.sendFeedback('rdr_1', 'Night map is dim');
+      expect(server.bodies('/riders/me/feedback').single, {'message': 'Night map is dim'});
     });
 
     test("The rider's phone comes from GET /riders/me", () async {

@@ -16,6 +16,7 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/database"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/httpserver"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/idempotency"
+	"github.com/teamprosperlink/Ninzo_backend/internal/riderrules"
 )
 
 // Choices the rider app offers. They are the API's, so the app has none of its own; each code is
@@ -39,12 +40,12 @@ var (
 	}
 	// check says what the app checks itself: manual is the rider's tick.
 	checklist = []map[string]string{
-		{"code": "helmet", "label": "Helmet on", "check": "manual"},
+		{"code": "helmet", "label": "Helmet on", "check": "manual", "hint": "Wear your helmet at all times"},
 		{"code": "phoneCharged", "label": "Phone charged", "check": "phone_battery"},
 		{"code": "scooterBattery", "label": "Scooter battery OK", "check": "scooter_battery"},
-		{"code": "location", "label": "Location is on", "check": "location"},
-		{"code": "insulatedBox", "label": "Insulated box ready", "check": "manual"},
-		{"code": "scooterClean", "label": "Scooter is clean", "check": "manual"},
+		{"code": "location", "label": "Location is on", "check": "location", "hint": "Needed to match you with nearby orders"},
+		{"code": "insulatedBox", "label": "Insulated box ready", "check": "manual", "hint": "Clean, no leaks, lid closes firmly"},
+		{"code": "scooterClean", "label": "Scooter is clean", "check": "manual", "hint": "Box and seat wiped"},
 	}
 )
 
@@ -96,21 +97,27 @@ func (s *Service) getRiderSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	httpserver.WriteJSON(w, http.StatusOK, map[string]any{
 		"settings": map[string]any{
-			"timer_length_s":          value("timer_length_s"),
-			"arrive_m":                value("rider_arrive_m"),
-			"almost_there_m":          value("rider_almost_m"),
-			"away_from_spot_m":        value("rider_away_m"),
-			"low_stock_qty":           value("restock_low_qty"),
-			"scooter_capacity_qty":    value("scooter_capacity_qty"),
-			"min_phone_battery_pct":   value("min_phone_battery_pct"),
-			"min_scooter_battery_pct": value("min_scooter_battery_pct"),
-			"low_scooter_battery_pct": value("low_scooter_battery_pct"),
-			"ride_speed_kmh":          value("straight_line_speed_kmh"),
-			"break_options_s":         breakOptionsS,
-			"add_time_options_s":      addTimeOptionsS,
-			"skip_reasons":            skipReasons,
-			"problem_types":           problemTypes,
-			"checklist":               checklist,
+			"timer_length_s":                  value("timer_length_s"),
+			"arrive_m":                        value("rider_arrive_m"),
+			"almost_there_m":                  value("rider_almost_m"),
+			"away_from_spot_m":                value("rider_away_m"),
+			"low_stock_qty":                   value("restock_low_qty"),
+			"scooter_capacity_qty":            value("scooter_capacity_qty"),
+			"min_phone_battery_pct":           value("min_phone_battery_pct"),
+			"min_scooter_battery_pct":         value("min_scooter_battery_pct"),
+			"low_scooter_battery_pct":         value("low_scooter_battery_pct"),
+			"ride_speed_kmh":                  value("straight_line_speed_kmh"),
+			"break_options_s":                 breakOptionsS,
+			"add_time_options_s":              addTimeOptionsS,
+			"skip_reasons":                    skipReasons,
+			"problem_types":                   problemTypes,
+			"checklist":                       checklist,
+			"stock_request_ask_before_s":      int(riderrules.StockAskBefore.Seconds()),
+			"stock_request_reminder_before_s": int(riderrules.StockReminderBefore.Seconds()),
+			"shift_ending_soon_before_s":      int(riderrules.EndingSoonBefore.Seconds()),
+			"break_extension_s":               int(riderrules.BreakExtension.Seconds()),
+			"not_at_gate_after_s":             int(riderrules.NotAtGateAfter.Seconds()),
+			"handover_code_length":            riderrules.HandoverCodeDigits,
 		},
 		"server_time": serverTime(),
 	})

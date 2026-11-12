@@ -832,6 +832,7 @@ paths:
       - support
       operationId: sendRiderFeedback
       summary: Send feedback about the app
+      description: What the rider writes, 1 to 2000 characters, kept for the team to read.
       parameters:
       - $ref: ../shared/common.yaml#/components/parameters/IdempotencyKey
       requestBody:
@@ -2619,6 +2620,12 @@ components:
       description: What the rider app works by, from the rider's zone settings. Null where the zone
         has no value.
       required:
+      - stock_request_ask_before_s
+      - stock_request_reminder_before_s
+      - shift_ending_soon_before_s
+      - break_extension_s
+      - not_at_gate_after_s
+      - handover_code_length
       - timer_length_s
       - arrive_m
       - almost_there_m
@@ -2699,6 +2706,23 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RiderChoice'
+        stock_request_ask_before_s:
+          description: How long before the planned start the app asks if the rider is coming.
+          type: integer
+        stock_request_reminder_before_s:
+          description: When a rider who has not answered is reminded.
+          type: integer
+        shift_ending_soon_before_s:
+          type: integer
+        break_extension_s:
+          description: What "+15 min" adds to a break.
+          type: integer
+        not_at_gate_after_s:
+          description: How long the handover's code step waits, empty, before offering "Customer not at the gate?".
+          type: integer
+        handover_code_length:
+          description: Digits in the customer's handover code.
+          type: integer
     RiderSettingsResponse:
       type: object
       required:

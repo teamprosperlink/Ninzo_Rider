@@ -389,6 +389,8 @@ final watchRiderNotificationsUseCaseProvider = Provider(
   (ref) => WatchRiderNotifications(ref.watch(profileRepositoryProvider)),
 );
 final watchShiftRecordsUseCaseProvider = Provider((ref) => WatchShiftRecords(ref.watch(profileRepositoryProvider)));
+final watchHelpUseCaseProvider = Provider((ref) => WatchHelp(ref.watch(profileRepositoryProvider)));
+final sendFeedbackUseCaseProvider = Provider((ref) => SendFeedback(ref.watch(profileRepositoryProvider)));
 
 // ---- refill ----
 

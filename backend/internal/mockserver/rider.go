@@ -416,15 +416,16 @@ func riderRoutes() []route {
 			c.json(200, map[string]any{"settings": map[string]any{
 				"timer_length_s": 90, "arrive_m": 100, "almost_there_m": 300, "away_from_spot_m": 150, "low_stock_qty": 5,
 				"scooter_capacity_qty": 8, "min_phone_battery_pct": 50, "min_scooter_battery_pct": 40, "low_scooter_battery_pct": 20,
-				"ride_speed_kmh": 15, "break_options_s": []int{900, 1800, 2700, 3600}, "add_time_options_s": []int{900, 1800, 2700, 3600, 7200, 10800, 14400},
+				"ride_speed_kmh": 15, "stock_request_ask_before_s": 3600, "stock_request_reminder_before_s": 1800, "shift_ending_soon_before_s": 900,
+				"break_extension_s": 900, "not_at_gate_after_s": 15, "handover_code_length": 4, "break_options_s": []int{900, 1800, 2700, 3600}, "add_time_options_s": []int{900, 1800, 2700, 3600, 7200, 10800, 14400},
 				"skip_reasons": []map[string]string{{"code": "scooterProblem", "label": "Scooter problem"}, {"code": "itemMissing", "label": "Item missing or damaged"},
 					{"code": "notSafe", "label": "Not safe to ride"}, {"code": "somethingElse", "label": "Something else"}},
 				"problem_types": []map[string]string{{"code": "breakdown", "label": "Breakdown", "hint": "Scooter won’t run"},
 					{"code": "accident", "label": "Accident", "hint": "Tell us you’re safe"}, {"code": "gate_closed", "label": "Gate closed", "hint": "Can’t get in"},
 					{"code": "customer_absent", "label": "Customer absent", "hint": "Not at the gate"}, {"code": "unsafe_route", "label": "Unsafe route", "hint": "Road feels unsafe"}},
-				"checklist": []map[string]string{{"code": "helmet", "label": "Helmet on", "check": "manual"}, {"code": "phoneCharged", "label": "Phone charged", "check": "phone_battery"},
-					{"code": "scooterBattery", "label": "Scooter battery OK", "check": "scooter_battery"}, {"code": "location", "label": "Location is on", "check": "location"},
-					{"code": "insulatedBox", "label": "Insulated box ready", "check": "manual"}, {"code": "scooterClean", "label": "Scooter is clean", "check": "manual"}},
+				"checklist": []map[string]string{{"code": "helmet", "label": "Helmet on", "check": "manual", "hint": "Wear your helmet at all times"}, {"code": "phoneCharged", "label": "Phone charged", "check": "phone_battery"},
+					{"code": "scooterBattery", "label": "Scooter battery OK", "check": "scooter_battery"}, {"code": "location", "label": "Location is on", "check": "location", "hint": "Needed to match you with nearby orders"},
+					{"code": "insulatedBox", "label": "Insulated box ready", "check": "manual", "hint": "Clean, no leaks, lid closes firmly"}, {"code": "scooterClean", "label": "Scooter is clean", "check": "manual", "hint": "Box and seat wiped"}},
 			}})
 		}},
 		{method: "GET", path: "/riders/me/help", handle: func(c *call) {

@@ -5,6 +5,14 @@ each with its Issue number. Entries are added in the same PR that ships the feat
 
 ## [Unreleased]
 
+### The rider app's settings, help, feedback, checklist and gate check (no Issue yet: made in the rider app repo's `backend/` copy)
+- Added: `GET /riders/me/settings` (`getRiderSettings`): the zone's timer, distances, battery levels, stock limits and speed; the reminder, break and handover timings (`internal/riderrules`, which the reminders and the handover code also use); and every choice the app offers (break and Add time lengths, skip reasons, problem types, the checklist with its hints).
+- Added: zone settings `rider_arrive_m`, `rider_almost_m`, `rider_away_m`, `scooter_capacity_qty`, `min_phone_battery_pct`, `min_scooter_battery_pct`, `low_scooter_battery_pct`.
+- Added: `GET /riders/me/help` from `help_articles` (seeded with the design's six questions; the answers need the owner's review) and `POST /riders/me/feedback` into `rider_feedback`.
+- Added: `checklist` on `startShift`, kept on the shift.
+- Added: `POST /orders/{order_id}/gate-check` (`checkGate`): a gate's `rider_code`, or location alone when it has none (decision 0012). It changes nothing, so it takes no Idempotency-Key (added to the contract rules' list).
+- Added: migration 0042. Not applied to Supabase.
+
 ### The rider's day and documents on the server (no Issue yet: made in the rider app repo's `backend/` copy)
 - Added: `POST /riders/me/shifts/online` (`goOnline`), `POST /riders/me/shifts/break` (`takeBreak`, also extends one under way), `POST /riders/me/shifts/break/end` (`endBreak`) and `POST /riders/me/shifts/planned-end` (`setPlannedEnd`, "Add time"). The shift carries `online_at` and `break`.
 - Changed: a rider on a break gets no offers: `freeRider` and availability's `reachable` skip them, and taking a break hands an open offer back.

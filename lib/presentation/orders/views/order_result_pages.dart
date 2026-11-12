@@ -109,8 +109,9 @@ class OrderCancelledPage extends ConsumerWidget {
         AppStrings.theCustomerCancelledThisCashOrder,
         [(AppStrings.order, AppStrings.hashNumber(order.number)), (AppStrings.status, AppStrings.cancelled), (AppStrings.payment, order.payment.label)],
       ),
+      // The pay is the earnings' own; the API sends no rule to quote.
       CancellationKind.upiFull => (
-        AppStrings.theCustomerCancelledThisOrderIt(OrderRules.upiCancellationPay),
+        AppStrings.theCustomerCancelledThisOrderYou(pay.tripPay),
         [(AppStrings.orderValue, AppStrings.rupeeAmount(order.amount)), (AppStrings.status, AppStrings.cancelled), (AppStrings.tripPay, AppStrings.rupeeAmount(pay.tripPay))],
       ),
     };

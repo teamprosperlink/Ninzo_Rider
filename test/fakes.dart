@@ -1,3 +1,4 @@
+import 'package:ninzo_rider/domain/entities/pre_shift_check.dart';
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
@@ -118,7 +119,10 @@ class FakeAuthRepository implements AuthRepository {
     if (gate != null) await gate.future;
     final failure = nextVerifyFailure;
     nextVerifyFailure = null;
-    if (failure != null) throw AuthFailure(failure);
+    // The server pauses sign-in for 30 minutes (`Retry-After`).
+    if (failure != null) {
+      throw AuthFailure(failure, null, failure == AuthFailureKind.tooManyAttempts ? const Duration(minutes: 30) : null);
+    }
     if (code != testOtp) throw const AuthFailure(AuthFailureKind.wrongCode);
     user.value = AuthUser(uid: 'u1', phone: _phone!);
   }
@@ -719,6 +723,11 @@ class FakeShiftRepository implements ShiftRepository {
     shift.value = _s.copyWith(phase: phase);
   }
 
+  final checklists = <Set<PreShiftCheck>>[];
+
+  @override
+  Future<void> recordChecklist(String uid, String shiftId, Set<PreShiftCheck> ticked) async => checklists.add(ticked);
+
   @override
   Future<void> recordScans(String uid, String shiftId, int scanned) async =>
       shift.value = _s.copyWith(stock: _s.stock.copyWith(scanned: scanned));
@@ -848,6 +857,15 @@ class FakeProfileRepository implements ProfileRepository {
 
   @override
   Stream<List<ShiftRecord>> watchShifts(String uid) => shifts.stream;
+
+  final help = Watched<List<HelpArticle>>(const []);
+  final feedback = <String>[];
+
+  @override
+  Stream<List<HelpArticle>> watchHelp(String uid) => help.stream;
+
+  @override
+  Future<void> sendFeedback(String uid, String message) async => feedback.add(message);
 }
 
 /// Records the pushes instead of showing them.

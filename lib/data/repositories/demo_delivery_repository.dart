@@ -195,7 +195,8 @@ class DemoDeliveryRepository implements DeliveryRepository, RouteIssueRepository
     _rideTimer?.cancel();
     _report(null);
     _signal?.online = true;
-    _set(_orders[orderId]!.copyWith(status: DeliveryStatus.cancelled, payment: payment, amount: amount));
+    // The demo plays the backend: the cancellation's pay lands on the order, as order_earnings would.
+    _set(_orders[orderId]!.copyWith(status: DeliveryStatus.cancelled, payment: payment, amount: amount, riderFee: tripPay));
     _online.addTripPay(tripPay);
   }
 

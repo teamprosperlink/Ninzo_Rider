@@ -151,7 +151,10 @@ Widget loginStepPage(
 }) => switch (step) {
   LoginStep.phone => PhoneStep(provider: provider, onBack: onBack, onRegister: onRegister),
   LoginStep.code => CodeStep(provider: provider),
-  LoginStep.paused => LoginPausedPage(onBackToLogin: ref.read(provider.notifier).editNumber),
+  LoginStep.paused => LoginPausedPage(
+    onBackToLogin: ref.read(provider.notifier).editNumber,
+    minutes: ref.watch(provider.select((s) => s.pausedMinutes)),
+  ),
 };
 
 /// Register 01–16.

@@ -26,6 +26,12 @@ class RiderApi {
   Future<Map<String, dynamic>> updateRider(Map<String, dynamic> changes) =>
       client.patch(RiderApiEndpoints.me, body: changes, idempotent: true);
   Future<Map<String, dynamic>> listNotifications() => client.get(RiderApiEndpoints.notifications);
+  Future<Map<String, dynamic>> getSettings() => client.get(RiderApiEndpoints.settings);
+  Future<Map<String, dynamic>> getHelp() => client.get(RiderApiEndpoints.help);
+  Future<Map<String, dynamic>> sendFeedback(String message) =>
+      client.post(RiderApiEndpoints.feedback, body: {'message': message}, idempotent: true);
+  Future<Map<String, dynamic>> checkGate(String orderId, String method, String value) =>
+      client.post(RiderApiEndpoints.gateCheck(orderId), body: {'method': method, 'value': value});
   Future<Map<String, dynamic>> getRiderState() => client.get(RiderApiEndpoints.state);
   Future<Map<String, dynamic>> registerDevice(Map<String, dynamic> device) =>
       client.post(RiderApiEndpoints.devices, body: device, idempotent: true);

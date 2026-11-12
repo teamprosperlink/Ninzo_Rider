@@ -2,6 +2,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../domain/entities/online_status.dart' show ScooterStock;
+import '../../domain/entities/pre_shift_check.dart';
 import '../../domain/entities/shift.dart';
 import '../../domain/repositories/shift_end_repositories.dart';
 import '../../domain/repositories/shift_repository.dart';
@@ -167,7 +168,12 @@ class ApiShiftRepository implements ShiftRepository {
     if (node == null) throw const AppException('no_node');
     try {
       // This phone's device, so another phone of the rider's can tell.
-      await _session.api.startShift({'node_id': node.id, 'device_id': ?_session.api.deviceId});
+      await _session.api.startShift({
+        'node_id': node.id,
+        'device_id': ?_session.api.deviceId,
+        // What the rider ticked before setting off.
+        'checklist': ?(_session.day['checklist'] as List?),
+      });
     } on RiderApiException catch (e) {
       // rider_not_approved, rider_not_verified, shift_limit_reached,
       // no_scooter_at_node: no frame says why, the screen stays.
@@ -246,6 +252,11 @@ class ApiShiftRepository implements ShiftRepository {
 
   @override
   Future<void> recordScans(String uid, String shiftId, int scanned) => _session.setDay({'scanned': scanned});
+
+  /// Sent with the shift's start (`checklist` on `POST /riders/me/shifts/start`).
+  @override
+  Future<void> recordChecklist(String uid, String shiftId, Set<PreShiftCheck> ticked) =>
+      _session.setDay({'checklist': [for (final check in ticked) check.name]});
 }
 
 /// Only verified riders can start a shift (`GET /riders/me/verification`).

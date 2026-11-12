@@ -1,3 +1,4 @@
+import '../../core/errors/app_exception.dart';
 import '../../core/utils/time_format.dart';
 import '../entities/rider_application.dart';
 import '../entities/rider_document.dart';
@@ -84,4 +85,26 @@ List<ProfileDocument> profileDocumentsOf(RiderApplication? application) {
     ProfileDocument(label: AppStrings.idProof, verified: verified(RiderDocument.aadhaar)),
     ProfileDocument(label: AppStrings.selfie, verified: verified(RiderDocument.selfie)),
   ];
+}
+
+/// The help centre's questions and answers (Profile 02).
+class WatchHelp {
+  const WatchHelp(this._repository);
+
+  final ProfileRepository _repository;
+
+  Stream<List<HelpArticle>> call(String uid) => _repository.watchHelp(uid);
+}
+
+/// "Send feedback" (Profile 09): some words, trimmed.
+class SendFeedback {
+  const SendFeedback(this._repository);
+
+  final ProfileRepository _repository;
+
+  Future<void> call(String uid, String message) async {
+    final text = message.trim();
+    if (text.isEmpty) throw const AppException('feedback_empty');
+    await _repository.sendFeedback(uid, text);
+  }
 }

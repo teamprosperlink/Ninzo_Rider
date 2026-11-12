@@ -9,6 +9,7 @@ import '../../../domain/entities/online_status.dart';
 import '../viewmodels/break_view_model.dart';
 import '../widgets/demo_online_controls.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../domain/usecases/break_usecases.dart' show TakeBreak;
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_keys.dart';
 
@@ -39,7 +40,7 @@ class TakeBreakPage extends ConsumerWidget {
               onSelected: vm.select,
             ),
             const SizedBox(height: AppSizes.s16),
-            Text(AppStrings.lunchBreaksCanBe30Min, style: RiderText.caption),
+            Text(AppStrings.lunchBreaksCanBe(BreakOption.lunchRange.$1.label, BreakOption.lunchRange.$2.label), style: RiderText.caption),
           ],
         ),
       ),
@@ -91,7 +92,7 @@ class OnBreakPage extends ConsumerWidget {
             Text(over ? AppStrings.overYourMinBreak(minutes) : AppStrings.ofMinBreak(minutes), style: RiderText.caption),
             const SizedBox(height: AppSizes.s12),
             RiderChoiceChips<String>(
-              options: const [AppStrings.text15Min],
+              options: [AppStrings.plus(lengthLabel(TakeBreak.extension))],
               selected: '',
               label: (o) => o,
               onSelected: (_) => vm.addTime(),

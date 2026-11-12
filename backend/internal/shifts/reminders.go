@@ -8,14 +8,13 @@ import (
 
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/database"
 	"github.com/teamprosperlink/Ninzo_backend/internal/ridernotes"
+	"github.com/teamprosperlink/Ninzo_backend/internal/riderrules"
 )
 
+// The reminders' timings are riderrules', which getRiderSettings also gives the app.
 const (
-	// stockReminderBefore is how long before a planned start a rider who has not answered the
-	// stock request is reminded.
-	stockReminderBefore = 30 * time.Minute
-	// endingSoonBefore is how long before the planned end "Shift ending soon" goes.
-	endingSoonBefore = 15 * time.Minute
+	stockReminderBefore = riderrules.StockReminderBefore
+	endingSoonBefore    = riderrules.EndingSoonBefore
 )
 
 // RunReminders sends the timed reminders every so often until ctx ends: the stock request to a

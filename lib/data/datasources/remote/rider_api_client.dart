@@ -12,7 +12,11 @@ import '../../../core/api/api_endpoints.dart';
 
 /// The API's one error shape: `{code, message, retryable}`.
 class RiderApiException extends AppException {
-  const RiderApiException(this.code, {this.status, this.retryable = false, String? message}) : super(message ?? code);
+  const RiderApiException(this.code, {this.status, this.retryable = false, this.retryAfter, String? message})
+    : super(message ?? code);
+
+  /// The server's `Retry-After`, when it sent one.
+  final Duration? retryAfter;
 
   /// e.g. `invalid_otp`, `token_expired`. `network` when the server can't be reached.
   final String code;
@@ -177,6 +181,10 @@ class RiderApiClient {
       error['code'] as String? ?? 'http_${response.statusCode}',
       status: response.statusCode,
       retryable: error['retryable'] as bool? ?? response.statusCode >= 500,
+      retryAfter: switch (int.tryParse(response.headers['retry-after'] ?? '')) {
+        final int s => Duration(seconds: s),
+        null => null,
+      },
       message: error['message'] as String?,
     );
   }

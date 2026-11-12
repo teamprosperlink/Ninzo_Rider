@@ -28,7 +28,10 @@ enum AuthFailureKind {
 }
 
 class AuthFailure extends AppException {
-  const AuthFailure(this.kind, [super.reason]);
+  const AuthFailure(this.kind, [super.reason, this.retryAfter]);
 
   final AuthFailureKind kind;
+
+  /// How long sign-in is paused, as the server says (`Retry-After`); null when it didn't.
+  final Duration? retryAfter;
 }

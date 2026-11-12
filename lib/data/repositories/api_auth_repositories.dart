@@ -122,7 +122,7 @@ class ApiAuthRepository implements AuthRepository {
     'network' => AuthFailureKind.noInternet,
     'validation_failed' || 'invalid_phone' => AuthFailureKind.invalidNumber,
     _ => AuthFailureKind.unknown,
-  }, e.code);
+  }, e.code, e.retryAfter);
 
   void dispose() {
     _signedOut.cancel();

@@ -215,11 +215,16 @@ void main() {
     testWidgets('Help centre: Contact us, Report a problem goes to the report and back', (tester) async {
       tall(tester);
       final fakes = rider();
+      // The rider API's help centre.
+      fakes.profile.help.value = const [HelpArticle(id: 'f1', question: 'How do I go online?', answer: 'Ride to your spot.')];
       await pumpApp(tester, fakes);
       await tester.tap(find.byType(RiderAvatar));
       await settle(tester);
       await tapText(tester, 'Help centre');
       expect(find.text('How do I go online?'), findsOneWidget);
+      expect(find.text('Ride to your spot.'), findsNothing);
+      await tapText(tester, 'How do I go online?');
+      expect(find.text('Ride to your spot.'), findsOneWidget);
 
       await tapText(tester, 'Contact us');
       await tapText(tester, 'Report a problem');

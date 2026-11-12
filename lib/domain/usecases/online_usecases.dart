@@ -1,3 +1,4 @@
+import '../entities/rider_settings.dart';
 import '../../core/errors/app_exception.dart';
 import '../entities/shift.dart';
 import '../entities/online_status.dart';
@@ -52,7 +53,7 @@ class SelectOnlineAlert {
   const SelectOnlineAlert();
 
   /// The shift-ending banner shows this long before the end.
-  static const endingWindow = Duration(minutes: 15);
+  static Duration get endingWindow => RiderSettings.current.endingSoonBefore;
 
   OnlineAlert? call({
     required Shift shift,

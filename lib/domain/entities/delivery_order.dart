@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 
 import 'order.dart' show OrderItem;
+import 'rider_settings.dart';
 import '../../core/constants/app_strings.dart';
 
 /// How the customer pays: UPI or cash on delivery, nothing else.
@@ -35,16 +36,26 @@ enum DeliveryStatus {
   cancelled,
 }
 
-/// Why the rider skips an order (Order 04).
-enum SkipReason {
-  scooterProblem(AppStrings.scooterProblem),
-  itemMissing(AppStrings.itemMissingOrDamaged),
-  notSafe(AppStrings.notSafeToRide),
-  somethingElse(AppStrings.somethingElse);
+/// Why the rider skips an order (Order 04). The reasons offered are the
+/// rider API's (`GET /riders/me/settings`); [name] is the code sent back.
+class SkipReason {
+  const SkipReason(this.name, this.label);
 
-  const SkipReason(this.label);
-
+  final String name;
   final String label;
+
+  static const scooterProblem = SkipReason('scooterProblem', AppStrings.scooterProblem);
+  static const itemMissing = SkipReason('itemMissing', AppStrings.itemMissingOrDamaged);
+  static const notSafe = SkipReason('notSafe', AppStrings.notSafeToRide);
+  static const somethingElse = SkipReason('somethingElse', AppStrings.somethingElse);
+
+  static List<SkipReason> get values => RiderSettings.current.skipReasons;
+
+  @override
+  bool operator ==(Object other) => other is SkipReason && other.name == name;
+
+  @override
+  int get hashCode => name.hashCode;
 }
 
 /// How the rider proves they're at the gate; location alone can't.
@@ -121,6 +132,7 @@ class DeliveryOrder {
     DateTime? assignedAt,
     SkipReason? skipReason,
     DateTime? gateConfirmedAt,
+    int? riderFee,
   }) => DeliveryOrder(
     id: id,
     number: number,
@@ -132,7 +144,7 @@ class DeliveryOrder {
     status: status ?? this.status,
     customerPhone: customerPhone,
     skipReason: skipReason ?? this.skipReason,
-    riderFee: riderFee,
+    riderFee: riderFee ?? this.riderFee,
     tripMeters: tripMeters,
     gateConfirmedAt: gateConfirmedAt ?? this.gateConfirmedAt,
   );
@@ -153,11 +165,8 @@ class OrderClock {
 }
 
 abstract final class OrderRules {
-  /// From assignment to the customer.
-  static const window = Duration(seconds: 90);
-
-  /// A UPI cancellation pays the rider the lesser of this and the order's price.
-  static const upiCancellationPay = 20;
+  /// From assignment to the customer: the zone's timer (`timer_length_s`).
+  static Duration get window => RiderSettings.current.timerLength;
 }
 
 /// Which way the customer's cancellation pays the rider.

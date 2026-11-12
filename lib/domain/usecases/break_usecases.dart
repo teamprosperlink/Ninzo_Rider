@@ -1,3 +1,4 @@
+import '../entities/rider_settings.dart';
 import '../../core/errors/app_exception.dart';
 import '../entities/shift.dart';
 import '../entities/online_status.dart';
@@ -10,7 +11,7 @@ class TakeBreak {
   const TakeBreak(this._repository, this._clock);
 
   /// "+15 min".
-  static const extension = Duration(minutes: 15);
+  static Duration get extension => RiderSettings.current.breakExtension;
 
   final OnlineRepository _repository;
   final DateTime Function() _clock;

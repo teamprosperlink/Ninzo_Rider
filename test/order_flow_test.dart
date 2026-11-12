@@ -1,3 +1,4 @@
+import 'package:ninzo_rider/core/constants/demo_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
@@ -41,25 +42,27 @@ void main() {
   });
 
   group('Cancellation pay', () {
-    CancellationPay payOf(OrderPayment payment, int amount) =>
-        cancellationPayOf(testDeliveryOrder(payment: payment, amount: amount));
+    CancellationPay payOf(OrderPayment payment, int amount, int fee) =>
+        cancellationPayOf(testDeliveryOrder(payment: payment, amount: amount).copyWith(riderFee: fee));
 
-    test('UPI pays ₹20 from ₹20 up', () {
-      expect(payOf(OrderPayment.upi, 60).kind, CancellationKind.upiFlat);
-      expect(payOf(OrderPayment.upi, 60).tripPay, 20);
-      expect(payOf(OrderPayment.upi, 20).kind, CancellationKind.upiFlat);
-      expect(payOf(OrderPayment.upi, 20).tripPay, 20);
+    test("The trip pay is the order's pay in the earnings, nothing the app works out", () {
+      expect(payOf(OrderPayment.upi, 60, 20).kind, CancellationKind.upiFlat);
+      expect(payOf(OrderPayment.upi, 60, 20).tripPay, 20);
+      expect(payOf(OrderPayment.upi, 60, 35).tripPay, 35);
+      expect(payOf(OrderPayment.upi, 60, 0).tripPay, 0);
     });
 
-    test('UPI under ₹20 pays the full order amount', () {
-      expect(payOf(OrderPayment.upi, 19).kind, CancellationKind.upiFull);
-      expect(payOf(OrderPayment.upi, 16).tripPay, 16);
+    test('A pay that is the whole order is Navigate 06; cash is Navigate 05', () {
+      expect(payOf(OrderPayment.upi, 16, 16).kind, CancellationKind.upiFull);
+      expect(payOf(OrderPayment.cash, 149, 0).kind, CancellationKind.cash);
+      expect(payOf(OrderPayment.cash, 149, 0).tripPay, 0);
     });
 
-    test('Cash pays nothing, whatever the amount', () {
-      expect(payOf(OrderPayment.cash, 149).kind, CancellationKind.cash);
-      expect(payOf(OrderPayment.cash, 149).tripPay, 0);
-      expect(payOf(OrderPayment.cash, 10).tripPay, 0);
+    test("The demo's backend pays UPI the lesser of ₹20 and the price, cash nothing", () {
+      expect(DemoData.cancellationPay(OrderPayment.upi, 60), 20);
+      expect(DemoData.cancellationPay(OrderPayment.upi, 20), 20);
+      expect(DemoData.cancellationPay(OrderPayment.upi, 16), 16);
+      expect(DemoData.cancellationPay(OrderPayment.cash, 149), 0);
     });
   });
 
@@ -272,7 +275,8 @@ void main() {
       expect(find.text('Call customer (masked)'), findsNothing);
 
       await tap(tester, 'I’ve reached the gate');
-      fakes.delivery.order.value = fakes.delivery.order.value!.copyWith(status: DeliveryStatus.cancelled);
+      // The trip pay is what the earnings paid for the order (order_earnings).
+      fakes.delivery.order.value = fakes.delivery.order.value!.copyWith(status: DeliveryStatus.cancelled, riderFee: 20);
       await settle(tester);
       expect(find.text('Order cancelled'), findsOneWidget);
       expect(find.text('Trip pay'), findsOneWidget);

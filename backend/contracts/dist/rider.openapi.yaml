@@ -1356,6 +1356,9 @@ components:
                     type:
                         - integer
                         - "null"
+                break_extension_s:
+                    description: What "+15 min" adds to a break.
+                    type: integer
                 break_options_s:
                     items:
                         type: integer
@@ -1364,6 +1367,9 @@ components:
                     items:
                         $ref: '#/components/schemas/RiderChoice'
                     type: array
+                handover_code_length:
+                    description: Digits in the customer's handover code.
+                    type: integer
                 low_scooter_battery_pct:
                     type:
                         - integer
@@ -1381,6 +1387,9 @@ components:
                     type:
                         - integer
                         - "null"
+                not_at_gate_after_s:
+                    description: How long the handover's code step waits, empty, before offering "Customer not at the gate?".
+                    type: integer
                 problem_types:
                     description: Each code is a reportProblem type.
                     items:
@@ -1395,15 +1404,29 @@ components:
                     type:
                         - integer
                         - "null"
+                shift_ending_soon_before_s:
+                    type: integer
                 skip_reasons:
                     items:
                         $ref: '#/components/schemas/RiderChoice'
                     type: array
+                stock_request_ask_before_s:
+                    description: How long before the planned start the app asks if the rider is coming.
+                    type: integer
+                stock_request_reminder_before_s:
+                    description: When a rider who has not answered is reminded.
+                    type: integer
                 timer_length_s:
                     type:
                         - integer
                         - "null"
             required:
+                - stock_request_ask_before_s
+                - stock_request_reminder_before_s
+                - shift_ending_soon_before_s
+                - break_extension_s
+                - not_at_gate_after_s
+                - handover_code_length
                 - timer_length_s
                 - arrive_m
                 - almost_there_m
@@ -2935,6 +2958,7 @@ paths:
                 - location
     /riders/me/feedback:
         post:
+            description: What the rider writes, 1 to 2000 characters, kept for the team to read.
             operationId: sendRiderFeedback
             parameters:
                 - $ref: '#/components/parameters/IdempotencyKey'

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/widgets/rider/rider_ui.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../domain/entities/delivery_order.dart' show OrderRules;
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_numbers.dart';
@@ -38,7 +39,7 @@ class WelcomeView extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(AppStrings.deliverHotFoodIn90Seconds, style: RiderText.displayXl.copyWith(color: white)),
+                            Text(AppStrings.deliverHotFoodIn(OrderRules.window.inSeconds), style: RiderText.displayXl.copyWith(color: white)),
                             const SizedBox(height: AppSizes.s12),
                             Text(
                               AppStrings.waitAtYourSpotWithFood,
@@ -119,7 +120,7 @@ class _Hero extends StatelessWidget {
               ],
             ),
           ),
-          const Positioned(left: AppSizes.s196, top: AppSizes.s50, child: _Chip(AppStrings.hotIn90Sec)),
+          Positioned(left: AppSizes.s196, top: AppSizes.s50, child: _Chip(AppStrings.hotIn(OrderRules.window.inSeconds))),
           const Positioned(left: AppSizes.s30, top: AppSizes.s260, child: _Chip(AppStrings.sealedFresh)),
         ],
       ),

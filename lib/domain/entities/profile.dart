@@ -49,3 +49,12 @@ class ProfileDocument {
   final String label;
   final bool verified;
 }
+
+/// A help centre question with its answer (Profile 02), from the rider API.
+class HelpArticle {
+  const HelpArticle({required this.id, required this.question, required this.answer});
+
+  final String id;
+  final String question;
+  final String answer;
+}

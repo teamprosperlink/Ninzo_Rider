@@ -1,3 +1,4 @@
+import '../entities/pre_shift_check.dart';
 import '../entities/shift.dart';
 
 /// The rider's shifts. The backend creates each day's shift (time, hub,
@@ -28,4 +29,8 @@ abstract interface class ShiftRepository {
 
   /// Portions scanned onto the scooter so far.
   Future<void> recordScans(String uid, String shiftId, int scanned);
+
+  /// The "Before you start" items ticked; the rider API keeps them with the
+  /// shift it then starts.
+  Future<void> recordChecklist(String uid, String shiftId, Set<PreShiftCheck> ticked);
 }

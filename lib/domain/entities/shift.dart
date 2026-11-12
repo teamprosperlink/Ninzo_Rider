@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+import 'rider_settings.dart';
 
 /// Where the rider's stock for the day stands with the hub.
 ///
@@ -102,14 +103,19 @@ class Scooter {
   final int? batteryPercent;
 
   /// Charge needed to ride a whole shift.
-  static const minBatteryPercent = 40;
+  static int get minBatteryPercent => RiderSettings.current.minScooterBattery;
 
-  /// At or below this the main map warns (Shift 31).
-  // TODO(design): Figma marks this "on hold" until the battery level and
-  // scooter type are decided.
-  static const lowBatteryPercent = 20;
+  /// At or below this the main map warns (Shift 31): the zone's `low_scooter_battery_pct`.
+  static int get lowBatteryPercent => RiderSettings.current.lowScooterBattery;
 
-  bool get batteryOk => (batteryPercent ?? 100) >= minBatteryPercent;
+  /// The API knows the charge (`battery_pct`; null until scooter telemetry).
+  bool get batteryKnown => batteryPercent != null;
+
+  /// Known, and enough for the shift. An unknown charge is never taken as enough.
+  bool get batteryOk => batteryPercent != null && batteryPercent! >= minBatteryPercent;
+
+  /// Known, and too low to start.
+  bool get batteryTooLow => batteryPercent != null && batteryPercent! < minBatteryPercent;
 }
 
 /// Today's load: what the hub packed and how much has been scanned onto

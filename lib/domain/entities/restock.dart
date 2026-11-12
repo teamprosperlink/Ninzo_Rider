@@ -1,4 +1,5 @@
 import '../../core/constants/app_strings.dart';
+import 'rider_settings.dart';
 /// One line of a restock: what the hub would pack.
 class RestockLine {
   const RestockLine({required this.itemId, required this.name, required this.quantity});
@@ -104,7 +105,7 @@ class RestockRequest {
 /// The rules of a restock's quantities (Restock 02).
 abstract final class RestockRules {
   /// "Your scooter holds up to 8 items."
-  static const scooterHolds = 8;
+  static int get scooterHolds => RiderSettings.current.scooterCapacity;
 
   static int total(List<RestockLine> lines) => lines.fold(0, (sum, line) => sum + line.quantity);
 

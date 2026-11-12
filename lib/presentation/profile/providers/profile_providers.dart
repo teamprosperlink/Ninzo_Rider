@@ -21,3 +21,10 @@ final shiftRecordsProvider = StreamProvider.autoDispose<List<ShiftRecord>>((ref)
   if (uid == null) return Stream.value(const []);
   return ref.watch(watchShiftRecordsUseCaseProvider)(uid);
 });
+
+/// The help centre's questions and answers (Profile 02).
+final helpArticlesProvider = StreamProvider.autoDispose<List<HelpArticle>>((ref) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const []);
+  return ref.watch(watchHelpUseCaseProvider)(uid);
+});

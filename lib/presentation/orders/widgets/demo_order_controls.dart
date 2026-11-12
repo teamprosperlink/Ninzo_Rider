@@ -6,7 +6,6 @@ import '../../../core/constants/demo_data.dart';
 import '../../online/widgets/demo_online_controls.dart';
 import '../../../injection_container.dart';
 import '../../../domain/entities/delivery_order.dart';
-import '../../../domain/usecases/delivery_usecases.dart';
 import '../viewmodels/order_flow_view_model.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -66,10 +65,9 @@ class _DemoOrderControlsState extends ConsumerState<DemoOrderControls> {
     final demo = ref.read(demoDeliveryProvider);
     if (demo == null) return;
     final (payment, amount) = DemoData.cancellations[_nextCancel];
-    final pay = cancellationPayOf(widget.order.copyWith(payment: payment, amount: amount));
     _nextCancel = (_nextCancel + 1) % DemoData.cancellations.length;
     _nextRoute = _RouteStep.weakSignal;
-    demo.playCancel(widget.order.id, payment, amount, pay.tripPay);
+    demo.playCancel(widget.order.id, payment, amount, DemoData.cancellationPay(payment, amount));
   }
 
   @override

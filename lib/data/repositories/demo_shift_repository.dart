@@ -1,3 +1,4 @@
+import '../../domain/entities/pre_shift_check.dart';
 import '../../core/constants/app_mode.dart';
 import 'dart:async';
 
@@ -103,6 +104,9 @@ class DemoShiftRepository implements ShiftRepository {
 
   @override
   Future<void> setSpot(String uid, String shiftId, Spot spot) async => _put(uid, _get(uid).copyWith(spot: spot));
+
+  @override
+  Future<void> recordChecklist(String uid, String shiftId, Set<PreShiftCheck> ticked) async {}
 
   @override
   Future<void> recordScans(String uid, String shiftId, int scanned) async {

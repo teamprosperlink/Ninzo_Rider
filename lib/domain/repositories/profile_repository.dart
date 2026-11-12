@@ -1,6 +1,6 @@
 import '../entities/profile.dart';
 
-/// The rider's records behind Profile 04–07.
+/// The rider's records behind Profile 02–09.
 abstract interface class ProfileRepository {
   Stream<ProfileFacts> watchFacts(String uid);
 
@@ -9,4 +9,10 @@ abstract interface class ProfileRepository {
 
   /// Newest first.
   Stream<List<ShiftRecord>> watchShifts(String uid);
+
+  /// The help centre's questions and answers, in order (Profile 02).
+  Stream<List<HelpArticle>> watchHelp(String uid);
+
+  /// "Send feedback" (Profile 09).
+  Future<void> sendFeedback(String uid, String message);
 }

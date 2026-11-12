@@ -1,3 +1,4 @@
+import '../entities/rider_settings.dart';
 import 'dart:async';
 
 import '../../core/errors/app_exception.dart';
@@ -12,17 +13,16 @@ import '../entities/order.dart' show OrderItem;
 import '../entities/problem_report.dart';
 import '../repositories/delivery_repository.dart';
 import '../repositories/handover_repository.dart';
-import '../../core/constants/app_patterns.dart';
 import '../../core/constants/app_strings.dart';
 
 abstract final class HandoverRules {
-  static const codeLength = 4;
+  static int get codeLength => RiderSettings.current.handoverCodeLength;
 
   /// On the code step with nothing typed for this long, the rider is offered
   /// "Customer not at the gate?" (the flow map's "Not at gate").
-  static const notAtGateAfter = Duration(seconds: 15);
+  static Duration get notAtGateAfter => RiderSettings.current.notAtGateAfter;
 
-  static final _code = RegExp(AppPatterns.fourDigitCode);
+  static RegExp get _code => RegExp('^[0-9]{$codeLength}\$');
 }
 
 /// The customer code is for UPI orders only; cash orders go straight to
