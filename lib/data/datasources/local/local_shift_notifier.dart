@@ -22,7 +22,9 @@ import '../../../core/constants/app_strings.dart';
 /// later ones are scheduled with the alarm manager, exact when the phone
 /// allows it, so they arrive with the app closed.
 ///
-/// TODO(backend): replace the scheduling with FCM pushes from the backend.
+/// With the rider API the server sends stock ready, spot assigned, orders
+/// waiting and shift ending soon (FCM); this shows them while the app is
+/// open, and shows the stock request, with its replies, at the plan's times.
 class LocalShiftNotifier implements ShiftNotifier {
   LocalShiftNotifier({FlutterLocalNotificationsPlugin? plugin}) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 

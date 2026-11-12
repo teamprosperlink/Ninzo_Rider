@@ -22,8 +22,8 @@ String apiOrderNumber(Map<String, dynamic> json, String id) {
 /// The online rider on the rider API: open offers are the queue (Shift 28,
 /// "Start order" accepts the first), the earnings are the day's, the
 /// relocation suggestion is the nudge and the restock request or suggestion
-/// is the restock. Breaks, added time and the Online clock stay on the
-/// phone: the API has nothing for them.
+/// is the restock. Going online, breaks and added time are the shift's on
+/// the server; what was sold and the average time come from its record.
 class ApiOnlineRepository implements OnlineRepository {
   ApiOnlineRepository(this._session);
 
@@ -37,40 +37,38 @@ class ApiOnlineRepository implements OnlineRepository {
   OnlineStatus _status() {
     final day = _session.day;
     final money = _session.earnings;
-    final breakState = day['break'] as Map<String, dynamic>?;
+    final shift = _session.state?['shift'] as Map<String, dynamic>?;
+    // The shift's own record: what was delivered on it, and when it ended.
+    final record = _session.shiftRecord(shift?['id'] as String?) ?? _session.shiftHistory.firstOrNull;
+    final breakState = shift?['break'] as Map<String, dynamic>?;
+    final breakStart = RiderApiSession.parseTime(breakState?['started_at']);
+    final breakEnd = RiderApiSession.parseTime(breakState?['ends_at']);
     final left = <String, int>{};
     for (final lot in _session.lots) {
       final item = lot['item_id'] as String;
       left[item] = (left[item] ?? 0) + ((lot['qty'] as num?)?.toInt() ?? 0);
     }
-    final delivered = _session.delivered.values;
-    final times = [for (final d in delivered) ?(d['seconds'] as num?)?.toInt()];
     return OnlineStatus(
-      onlineAt: RiderApiSession.parseTime(day['onlineAt']),
+      onlineAt: RiderApiSession.parseTime(shift?['online_at']),
       orders: (money?['orders'] as num?)?.toInt() ?? 0,
       earned: rupeesOf(money?['total']),
-      shiftEnd: RiderApiSession.parseTime(day['shiftEnd']),
+      shiftEnd: RiderApiSession.parseTime(shift?['planned_end_at']),
       queue: [
         for (final offer in _session.offers)
           if (offer['id'] != day['activeOfferId']) _assigned(offer),
       ],
       activeOrderId: _session.activeOrderId,
       itemsLeft: [for (final MapEntry(:key, :value) in left.entries) ItemLeft(name: _session.itemName(key), left: value)],
-      breakState: breakState == null
+      breakState: breakStart == null || breakEnd == null
           ? null
-          : BreakState(
-              startedAt: DateTime.parse(breakState['startedAt'] as String),
-              length: Duration(seconds: (breakState['seconds'] as num).toInt()),
-            ),
+          : BreakState(startedAt: breakStart, length: breakEnd.difference(breakStart)),
       nudge: _nudge(),
       restock: _restock(),
       earnings: money == null ? null : _breakdown(money),
-      sold: delivered.fold(0, (sum, d) => sum + ((d['qty'] as num?)?.toInt() ?? 0)),
-      averageDeliverySeconds: times.isEmpty ? null : times.reduce((a, b) => a + b) ~/ times.length,
-      // After a restart the server may no longer send the ended shift.
-      endedAt:
-          RiderApiSession.parseTime((_session.state?['shift'] as Map<String, dynamic>?)?['ended_at']) ??
-          RiderApiSession.parseTime(day['endedAt']),
+      sold: (record?['portions'] as num?)?.toInt() ?? 0,
+      averageDeliverySeconds: (record?['avg_delivery_s'] as num?)?.toInt(),
+      // After a restart the state no longer carries the ended shift; its record does.
+      endedAt: RiderApiSession.parseTime(shift?['ended_at']) ?? RiderApiSession.parseTime(record?['ended_at']),
     );
   }
 
@@ -197,13 +195,21 @@ class ApiOnlineRepository implements OnlineRepository {
     );
   }
 
+  /// `POST /riders/me/shifts/online`: the server keeps the first time.
   @override
-  Future<void> markOnline(String uid, String shiftId) =>
-      _session.setDay({'onlineAt': _session.clock().toUtc().toIso8601String()});
+  Future<void> markOnline(String uid, String shiftId) => _shiftCall(_session.api.goOnline);
 
+  /// "Add time" (`POST /riders/me/shifts/planned-end`).
   @override
-  Future<void> setShiftEnd(String uid, String shiftId, DateTime end) =>
-      _session.setDay({'shiftEnd': end.toUtc().toIso8601String()});
+  Future<void> setShiftEnd(String uid, String shiftId, DateTime end) => _shiftCall(() => _session.api.setPlannedEnd(end));
+
+  Future<void> _shiftCall(Future<Map<String, dynamic>> Function() call) async {
+    try {
+      await _session.changeShift(call);
+    } on RiderApiException catch (e) {
+      throw AppException(e.code);
+    }
+  }
 
   /// "Start order" accepts the offer (`POST /offers/{id}/accept`).
   @override
@@ -223,12 +229,12 @@ class ApiOnlineRepository implements OnlineRepository {
     await _session.setDay({'activeOrderId': accepted['id'], 'activeOfferId': order.id});
   }
 
+  /// A break (`POST /riders/me/shifts/break`, which also makes one under way
+  /// longer) or its end (`POST /riders/me/shifts/break/end`). No offers come during it.
   @override
-  Future<void> setBreak(String uid, String shiftId, BreakState? state) => _session.setDay({
-    'break': state == null
-        ? null
-        : {'startedAt': state.startedAt.toUtc().toIso8601String(), 'seconds': state.length.inSeconds},
-  });
+  Future<void> setBreak(String uid, String shiftId, BreakState? state) => _shiftCall(
+    () => state == null ? _session.api.endBreak() : _session.api.takeBreak(state.length.inSeconds),
+  );
 
   /// Taking the nudge accepts the relocation; anything else hides it here.
   @override

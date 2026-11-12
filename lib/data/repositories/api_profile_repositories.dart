@@ -1,6 +1,6 @@
 import 'dart:async';
-
-import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io';
 
 import '../../core/errors/app_exception.dart';
 import '../../domain/entities/profile.dart';
@@ -19,23 +19,24 @@ import 'api_online_repository.dart';
 /// The API signs riders in with a phone and OTP only; an account exists once
 /// the operations team has added the number (status `applicant`, then
 /// `active`). The name and area go to `PATCH /riders/me` and come back from
-/// `GET /riders/me`. The document photos are files on the phone until "Send
-/// for review" starts the verification (`POST /riders/me/verification/start`,
-/// by hand until DigiLocker) and uploads each to the `upload_url` it returns;
-/// the review result comes from `GET /riders/me/verification`.
+/// `GET /riders/me`. Each document photo is uploaded as it is taken
+/// (`POST /riders/me/documents`), and the list of what was uploaded comes from
+/// `GET /riders/me/documents`. "Send for review" starts the verification
+/// (`POST /riders/me/verification/start`, by hand until DigiLocker); the review
+/// result comes from `GET /riders/me/verification`.
 ///
 /// An applicant who hasn't given their area yet has no application, so
 /// Register asks for their details; an active rider is approved and goes to Home.
 class ApiRegistrationRepository implements RegistrationRepository {
-  ApiRegistrationRepository(this._session, {http.Client? client}) : _client = client ?? http.Client();
+  ApiRegistrationRepository(this._session);
 
   final RiderApiSession _session;
-  final http.Client _client;
   bool _verificationAsked = false;
   String? _phone;
 
-  /// What the phone keeps for [uid]: the document photos until they are
-  /// uploaded, and which screens were seen (submitted, registered here, welcomed).
+  /// What the phone keeps for [uid]: where each uploaded photo is on this
+  /// phone, for its preview, and which screens were seen (submitted,
+  /// registered here, welcomed).
   Map<String, dynamic> _kept = {};
   String? _keptFor;
 
@@ -83,7 +84,7 @@ class ApiRegistrationRepository implements RegistrationRepository {
     return RiderApplication(
       uid: uid,
       name: rider['name'] as String? ?? '',
-      phone: _phone ?? '',
+      phone: rider['phone'] as String? ?? _phone ?? '',
       area: _area(area) ??
           RiderArea(
             id: rider['zone_id'] as String? ?? '',
@@ -122,22 +123,34 @@ class ApiRegistrationRepository implements RegistrationRepository {
     );
   }
 
-  /// The photos kept on the phone, with the review's issue on the document it concerns.
+  /// What `GET /riders/me/documents` says was uploaded, with the review's
+  /// issue on the document it concerns. A photo taken on this phone shows
+  /// from its file; one uploaded elsewhere has no preview here.
   Map<RiderDocument, DocumentUpload> _documents(DocumentIssue? issue) {
-    final kept = (_kept['documents'] as Map<String, dynamic>?) ?? const {};
+    final previews = (_kept['previews'] as Map<String, dynamic>?) ?? const {};
+    final uploaded = <RiderDocument, Map<DocumentSide, String>>{};
+    for (final doc in _session.documents) {
+      final document = RiderDocument.values.asNameMap()[doc['document']];
+      final side = DocumentSide.values.asNameMap()[doc['side']];
+      if (document == null || side == null) continue;
+      (uploaded[document] ??= {})[side] = previews['${EnumName(document).name}.${side.name}'] as String? ?? '';
+    }
     final flagged = issue == null ? null : (issue == DocumentIssue.expired ? RiderDocument.drivingLicence : RiderDocument.aadhaar);
     return {
       for (final document in RiderDocument.values)
-        if (kept[document.name] != null || document == flagged)
+        if (uploaded[document] != null || document == flagged)
           document: DocumentUpload(
-            files: {
-              for (final MapEntry(:key, :value) in ((kept[document.name] as Map?) ?? const {}).entries)
-                DocumentSide.values.byName(key as String): value as String,
-            },
+            files: uploaded[document] ?? const {},
             issue: document == flagged && _kept['submitted'] != true ? issue : null,
           ),
     };
   }
+
+  static String _contentType(String path) => switch (path.split('.').last.toLowerCase()) {
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    _ => 'image/jpeg',
+  };
 
   @override
   Future<void> saveDetails({
@@ -160,47 +173,47 @@ class ApiRegistrationRepository implements RegistrationRepository {
     await _save(uid, {'registeredHere': true});
   }
 
-  /// Kept on the phone until "Send for review" uploads it.
+  /// Uploads the photo (`POST /riders/me/documents`, base64, replacing the
+  /// one before). The file stays on the phone only for its preview.
   @override
   Future<String> uploadPhoto({
     required String uid,
     required RiderDocument document,
     required DocumentSide side,
     required String filePath,
-  }) async => filePath;
-
-  @override
-  Future<void> saveDocuments(String uid, Map<RiderDocument, DocumentUpload> documents) => _save(uid, {
-    'documents': {
-      for (final MapEntry(:key, :value) in documents.entries)
-        key.name: {for (final MapEntry(key: side, value: path) in value.files.entries) side.name: path},
-    },
-  });
-
-  /// Starts the verification and uploads every photo to its `upload_url`.
-  @override
-  Future<void> submit(String uid) async {
-    await _load(uid);
-    final Map<String, dynamic> start;
+  }) async {
+    final bytes = await File(filePath).readAsBytes();
     try {
-      start = await _session.api.startVerification({'method': 'manual_upload'});
+      await _session.api.uploadDocument({
+        'document': EnumName(document).name,
+        'side': side.name,
+        'content_type': _contentType(filePath),
+        'data_base64': base64Encode(bytes),
+      });
     } on RiderApiException catch (e) {
       throw AppException(e.code);
     }
-    final url = start['upload_url'] as String?;
-    if (url == null) throw const AppException('no_upload_url');
-    final documents = (_kept['documents'] as Map<String, dynamic>?) ?? const {};
-    final token = (await _session.api.client.tokens.read())?.access;
-    for (final MapEntry(key: document, value: sides) in documents.entries) {
-      for (final MapEntry(key: side, value: path) in (sides as Map).entries) {
-        final request = http.MultipartRequest('POST', Uri.parse(url))
-          ..fields['document'] = document
-          ..fields['side'] = side as String
-          ..files.add(await http.MultipartFile.fromPath('file', path as String));
-        if (token != null) request.headers['Authorization'] = 'Bearer $token';
-        final response = await _client.send(request);
-        if (response.statusCode >= 300) throw AppException('upload_${response.statusCode}');
-      }
+    await _save(uid, {
+      'previews': {...?(_kept['previews'] as Map<String, dynamic>?), '${EnumName(document).name}.${side.name}': filePath},
+    });
+    await _session.refreshDocuments();
+    return filePath;
+  }
+
+  /// The photos are on the server already (each was uploaded when taken).
+  @override
+  Future<void> saveDocuments(String uid, Map<RiderDocument, DocumentUpload> documents) async {}
+
+  /// Starts the verification (`POST /riders/me/verification/start`) for the
+  /// photos already uploaded.
+  @override
+  Future<void> submit(String uid) async {
+    await _load(uid);
+    try {
+      _session.verificationNext = await _session.api.startVerification({'method': 'manual_upload'});
+    } on RiderApiException catch (e) {
+      // Started already: it is under review.
+      if (e.code != 'verification_in_progress') throw AppException(e.code);
     }
     await _save(uid, {'submitted': true});
     await _session.loadVerification();
@@ -260,32 +273,53 @@ class ApiProfileRepository implements ProfileRepository {
     ],
   );
 
+  /// Each day's shifts (`GET /riders/me/shifts`) with that day's pay
+  /// (`GET /riders/me/earnings?date=`). A day with more than one shift reads
+  /// from its first online time to its last end.
   @override
   Stream<List<ShiftRecord>> watchShifts(String uid) async* {
+    List<Map<String, dynamic>> shifts;
+    try {
+      shifts = [
+        ...((await _session.api.listShifts(days: _days))['shifts'] as List? ?? const []).cast<Map<String, dynamic>>(),
+      ];
+    } on RiderApiException {
+      shifts = _session.shiftHistory;
+    }
+    final byDay = <String, List<Map<String, dynamic>>>{};
+    for (final shift in shifts) {
+      final started = RiderApiSession.parseTime(shift['started_at']);
+      if (started == null) continue;
+      byDay.putIfAbsent(_session.indiaDateOf(started), () => []).add(shift);
+    }
     final records = <ShiftRecord>[];
     for (var ago = 0; ago < _days; ago++) {
       final date = _session.indiaDateAgo(ago);
-      final day = ago == 0 ? _session.day : await _session.dayOn(date);
+      final day = byDay[date];
+      if (day == null) continue;
       Map<String, dynamic>? money;
       try {
         money = await _session.api.getEarnings(date: date);
       } on RiderApiException {
         money = null;
       }
-      final orders = (money?['orders'] as num?)?.toInt() ?? 0;
-      final onlineAt = RiderApiSession.parseTime(day['onlineAt']);
-      if (orders == 0 && onlineAt == null) continue;
-      final parts = date.split('-').map(int.parse).toList();
-      final start = DateTime(parts[0], parts[1], parts[2]);
+      DateTime? earliest(String key) => [
+        for (final s in day) ?RiderApiSession.parseTime(s[key]),
+      ].fold<DateTime?>(null, (a, b) => a == null || b.isBefore(a) ? b : a);
+      DateTime? latest(String key) => [
+        for (final s in day) ?RiderApiSession.parseTime(s[key]),
+      ].fold<DateTime?>(null, (a, b) => a == null || b.isAfter(a) ? b : a);
+      final started = earliest('started_at')!;
+      final onlineAt = earliest('online_at') ?? started;
+      final open = day.any((s) => s['ended_at'] == null);
       records.add(
         ShiftRecord(
-          date: start,
-          orders: orders,
+          date: DateTime(started.year, started.month, started.day),
+          orders: (money?['orders'] as num?)?.toInt() ?? day.fold<int>(0, (n, s) => n + ((s['orders'] as num?)?.toInt() ?? 0)),
           earned: ApiOnlineRepository.rupeesOf(money?['total']),
-          // Orders on a day this phone kept nothing of: no online time known.
-          onlineAt: onlineAt ?? start,
-          plannedEnd: RiderApiSession.parseTime(day['shiftEnd']) ?? start.add(const Duration(days: 1)),
-          endedAt: onlineAt == null ? start : RiderApiSession.parseTime(day['endedAt']),
+          onlineAt: onlineAt,
+          plannedEnd: latest('planned_end_at') ?? latest('ended_at') ?? onlineAt,
+          endedAt: open ? null : latest('ended_at'),
         ),
       );
     }

@@ -22,6 +22,7 @@ import 'data/repositories/api_online_repository.dart';
 import 'data/repositories/api_profile_repositories.dart';
 import 'data/repositories/api_route_repository.dart';
 import 'data/datasources/remote/push_token_source.dart';
+import 'data/datasources/remote/server_pushes.dart';
 import 'data/repositories/api_shift_repository.dart';
 import 'data/repositories/api_stock_repository.dart';
 import 'data/repositories/prefs_session_repository.dart';
@@ -521,6 +522,12 @@ final watchPushActionsUseCaseProvider = Provider((ref) => WatchPushActions(ref.w
 final watchOpenedPushesUseCaseProvider = Provider((ref) => WatchOpenedPushes(ref.watch(shiftNotifierProvider)));
 final schedulePushUseCaseProvider = Provider((ref) => SchedulePush(ref.watch(shiftNotifierProvider)));
 final showPushUseCaseProvider = Provider((ref) => ShowPush(ref.watch(shiftNotifierProvider)));
+
+/// The rider API sends its own pushes; demo and tests have none.
+final serverPushesProvider = Provider<ServerPushes>(
+  (ref) => kRiderApi ? const FcmServerPushes(FirebasePushTokenSource()) : const NoServerPushes(),
+);
+final watchServerPushesUseCaseProvider = Provider((ref) => WatchServerPushes(ref.watch(serverPushesProvider)));
 final cancelPushUseCaseProvider = Provider((ref) => CancelPush(ref.watch(shiftNotifierProvider)));
 
 // ---- shift_end ----

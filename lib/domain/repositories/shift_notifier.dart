@@ -1,11 +1,17 @@
 import '../entities/shift.dart';
 import '../entities/shift_push.dart';
 
-/// Shows the shift's push notifications on the phone.
-///
-/// TODO(backend): the backend should send these through FCM (it knows when
-/// the hub packs); until then the app schedules them locally from the
-/// shift times and shows "Stock ready" when it sees the change.
+/// The pushes the rider API sends (FCM) that arrive while the app is open.
+abstract interface class ServerPushes {
+  /// True when the rider API sends [ShiftPush.fromServer] itself.
+  bool get active;
+
+  Stream<ShiftPush> get arrived;
+}
+
+/// Shows the shift's push notifications on the phone. With the rider API,
+/// the server sends [ShiftPush.fromServer] and this shows the stock request
+/// (with its replies) at the plan's times and "away from your spot".
 abstract interface class ShiftNotifier {
   /// Sets up the channel and returns the action the app was opened with,
   /// if it was launched from a push.

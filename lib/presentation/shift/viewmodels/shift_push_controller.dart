@@ -28,6 +28,9 @@ class ShiftPushController extends Notifier<void> {
     ref.onDispose(sub.cancel);
     final opened = ref.watch(watchOpenedPushesUseCaseProvider)().listen(_onOpened);
     ref.onDispose(opened.cancel);
+    // The rider API's own pushes, arriving with the app open: the phone shows them.
+    final server = ref.watch(watchServerPushesUseCaseProvider)().listen(_onServerPush);
+    ref.onDispose(server.cancel);
     unawaited(
       ref.watch(initPushesUseCaseProvider)().then((launched) {
         final action = launched.action, push = launched.push;
@@ -62,7 +65,9 @@ class ShiftPushController extends Notifier<void> {
     final cancel = ref.read(cancelPushUseCaseProvider);
     final schedule = ref.read(schedulePushUseCaseProvider);
     final show = ref.read(showPushUseCaseProvider);
-    final plan = ref.read(planShiftPushesUseCaseProvider)(shift, ref.read(clockProvider)(), previous: previous);
+    final plan = ref
+        .read(watchServerPushesUseCaseProvider)
+        .withoutServerSent(ref.read(planShiftPushesUseCaseProvider)(shift, ref.read(clockProvider)(), previous: previous));
     // Unconditionally: an alarm may be left from before the app restarted.
     for (final push in plan.cancel) {
       _scheduled.remove(push);
@@ -85,7 +90,8 @@ class ShiftPushController extends Notifier<void> {
     shift,
   );
 
-  Future<void> _run(PushPlan plan, Shift shift) async {
+  Future<void> _run(PushPlan planned, Shift shift) async {
+    final plan = ref.read(watchServerPushesUseCaseProvider).withoutServerSent(planned);
     final cancel = ref.read(cancelPushUseCaseProvider);
     final schedule = ref.read(schedulePushUseCaseProvider);
     final show = ref.read(showPushUseCaseProvider);
@@ -101,6 +107,15 @@ class ShiftPushController extends Notifier<void> {
     for (final push in plan.showNow) {
       await show(push, shift, detail: plan.detail);
     }
+  }
+
+  /// A push from the rider API while the app is open (the phone shows none by itself then).
+  Future<void> _onServerPush(ShiftPush push) async {
+    if (!ref.mounted) return;
+    final shift = ref.read(todayShiftProvider).value;
+    if (shift == null) return;
+    final status = ref.read(onlineStatusProvider).value ?? const OnlineStatus();
+    await ref.read(showPushUseCaseProvider)(push, shift, detail: PushDetail(spotName: status.nudge?.spot.name ?? ''));
   }
 
   /// A tapped push leads where the flow map draws it.

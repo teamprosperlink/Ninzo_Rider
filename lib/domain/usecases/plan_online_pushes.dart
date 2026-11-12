@@ -7,8 +7,9 @@ import 'spot_usecases.dart';
 
 /// Notification 01–04, from what the phone can see for itself.
 ///
-/// TODO(backend): send these through FCM, so they reach a rider whose app is
-/// closed. Only "Shift ending soon" can be scheduled ahead here.
+/// With the rider API the server sends all but "away from your spot" itself,
+/// so they reach a rider whose app is closed; the app drops those
+/// (`WatchServerPushes.withoutServerSent`). Demo mode shows them all.
 class PlanOnlinePushes {
   const PlanOnlinePushes();
 

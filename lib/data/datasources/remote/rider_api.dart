@@ -49,6 +49,20 @@ class RiderApi {
   Future<Map<String, dynamic>> startShift(Map<String, dynamic> body) =>
       client.post(RiderApiEndpoints.shiftStart, body: body, idempotent: true);
   Future<Map<String, dynamic>> endShift() => client.post(RiderApiEndpoints.shiftEnd, idempotent: true);
+  Future<Map<String, dynamic>> goOnline() => client.post(RiderApiEndpoints.shiftOnline, idempotent: true);
+  Future<Map<String, dynamic>> takeBreak(int lengthS) =>
+      client.post(RiderApiEndpoints.shiftBreak, body: {'length_s': lengthS}, idempotent: true);
+  Future<Map<String, dynamic>> endBreak() => client.post(RiderApiEndpoints.shiftBreakEnd, idempotent: true);
+  Future<Map<String, dynamic>> setPlannedEnd(DateTime end) => client.post(
+    RiderApiEndpoints.shiftPlannedEnd,
+    body: {'planned_end_at': end.toUtc().toIso8601String()},
+    idempotent: true,
+  );
+  Future<Map<String, dynamic>> listShifts({int? days}) =>
+      client.get(RiderApiEndpoints.shifts, query: {'days': ?days?.toString()});
+  Future<Map<String, dynamic>> listDocuments() => client.get(RiderApiEndpoints.documents);
+  Future<Map<String, dynamic>> uploadDocument(Map<String, dynamic> body) =>
+      client.post(RiderApiEndpoints.documents, body: body, idempotent: true);
   Future<Map<String, dynamic>> acceptRelocation(String relocationId) =>
       client.post(RiderApiEndpoints.acceptRelocation(relocationId), idempotent: true);
   Future<Map<String, dynamic>> getShiftPlan() => client.get(RiderApiEndpoints.shiftPlan);

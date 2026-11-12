@@ -112,6 +112,33 @@ class _Server {
         'plan': plan = {...plan!, 'stock_reply': jsonDecode(request.body)['reply'], 'replied_at': '2026-11-11T06:00:00Z'},
       }),
       ('GET', '/riders/me/notifications') => _json(200, {'notifications': notifications}),
+      ('GET', '/riders/me/documents') => _json(200, {'documents': uploaded}),
+      ('POST', '/riders/me/documents') => () {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final info = {
+          'document': body['document'],
+          'side': body['side'],
+          'content_type': body['content_type'],
+          'size_bytes': base64Decode(body['data_base64'] as String).length,
+          'uploaded_at': '2026-11-11T06:00:00Z',
+        };
+        uploaded = [
+          for (final d in uploaded)
+            if (d['document'] != info['document'] || d['side'] != info['side']) d,
+          info,
+        ];
+        return _json(201, {'document': info});
+      }(),
+      ('GET', '/riders/me/shifts') => _json(200, {'shifts': history}),
+      ('POST', '/riders/me/shifts/online') => _shiftChange({'online_at': '2026-11-11T05:30:00Z'}),
+      ('POST', '/riders/me/shifts/break') => _shiftChange({
+        'break': {
+          'started_at': '2026-11-11T06:00:00Z',
+          'ends_at': DateTime.utc(2026, 11, 11, 6).add(Duration(seconds: jsonDecode(request.body)['length_s'] as int)).toIso8601String(),
+        },
+      }),
+      ('POST', '/riders/me/shifts/break/end') => _shiftChange({'break': null}),
+      ('POST', '/riders/me/shifts/planned-end') => _shiftChange({'planned_end_at': jsonDecode(request.body)['planned_end_at']}),
       ('POST', '/riders/me/stock/lot_1/quarantine') => () {
         lots = [
           for (final lot in lots)
@@ -224,6 +251,18 @@ class _Server {
   /// Today's shift plan (`GET /riders/me/shift-plan`), and the notifications.
   Map<String, dynamic>? plan;
   List<Map<String, dynamic>> notifications = [];
+
+  /// `GET /riders/me/documents` and `GET /riders/me/shifts`.
+  List<Map<String, dynamic>> uploaded = [];
+  List<Map<String, dynamic>> history = [];
+
+  /// A shift call's reply: the open shift with [changes].
+  http.Response _shiftChange(Map<String, dynamic> changes) {
+    final open = shift;
+    if (open == null) return _json(409, {'code': 'no_open_shift', 'retryable': false});
+    shift = {...open, ...changes};
+    return _json(200, {'shift': shift});
+  }
 
   Map<String, dynamic> _rider() => {
     'id': 'rdr_1',
@@ -506,17 +545,10 @@ void main() {
       expect(server.requests.where((r) => r.method == 'PATCH'), isEmpty);
     });
 
-    test('Send for review starts the verification and uploads each photo', () async {
+    test('Each photo is uploaded as it is taken; Send for review starts the verification', () async {
       server.riderStatus = 'applicant';
-      final photo = File('${Directory.systemTemp.path}/ninzo_test_photo.jpg')..writeAsBytesSync([1, 2, 3]);
-      final uploads = <http.BaseRequest>[];
-      final registration = ApiRegistrationRepository(
-        session,
-        client: MockClient.streaming((request, _) async {
-          uploads.add(request);
-          return http.StreamedResponse(Stream.value([]), 201);
-        }),
-      );
+      final photo = File('${Directory.systemTemp.path}/ninzo_test_photo.jpg')..writeAsBytesSync([0xFF, 0xD8, 0xFF, 1]);
+      final registration = ApiRegistrationRepository(session);
       await registration.watch('rdr_1').first;
       await registration.saveDetails(
         uid: 'rdr_1',
@@ -524,14 +556,30 @@ void main() {
         name: 'Asha Rao',
         area: const RiderArea(id: 'a1', name: 'Yelahanka', city: 'Bengaluru', latitude: 13.1, longitude: 77.59),
       );
-      await registration.saveDocuments('rdr_1', {
-        RiderDocument.selfie: DocumentUpload(files: {DocumentSide.photo: photo.path}),
+      final path = await registration.uploadPhoto(uid: 'rdr_1', document: RiderDocument.selfie, side: DocumentSide.photo, filePath: photo.path);
+      expect(path, photo.path);
+      expect(server.bodies('/riders/me/documents').single, {
+        'document': 'selfie',
+        'side': 'photo',
+        'content_type': 'image/jpeg',
+        'data_base64': base64Encode([0xFF, 0xD8, 0xFF, 1]),
       });
+      var application = await registration.watch('rdr_1').first;
+      expect(application!.documents[RiderDocument.selfie]!.files[DocumentSide.photo], photo.path);
       await registration.submit('rdr_1');
       expect(server.bodies('/riders/me/verification/start').single, {'method': 'manual_upload'});
-      expect(uploads.single.url.toString(), 'https://upload.test/1');
-      final application = await registration.watch('rdr_1').first;
+      application = await registration.watch('rdr_1').first;
       expect(application!.status, RegistrationStatus.underReview);
+    });
+
+    test('Documents uploaded on another phone are listed from the API', () async {
+      server.uploaded = [
+        {'document': 'aadhaar', 'side': 'front', 'content_type': 'image/jpeg', 'size_bytes': 100, 'uploaded_at': '2026-11-01T00:00:00Z'},
+      ];
+      await session.refresh(full: true);
+      final application = await ApiRegistrationRepository(session).watch('rdr_1').first;
+      expect(application!.documents.keys, [RiderDocument.aadhaar]);
+      expect(application.documents[RiderDocument.aadhaar]!.files.keys, [DocumentSide.front]);
     });
 
     test('Notifications come from GET /riders/me/notifications, newest first', () async {
@@ -549,16 +597,28 @@ void main() {
       expect(await ApiProfileRepository(session).watchNotifications('rdr_1').first, isEmpty);
     });
 
-    test("My shifts: each day's orders and pay from the earnings", () async {
-      await session.ensureLoaded();
-      await session.setDay({'onlineAt': '2026-11-11T05:30:00Z'});
+    test("My shifts: the days with a shift, each with its day's orders and pay", () async {
+      server.history = [
+        {
+          'id': 'shf_1',
+          'node_id': 'node_7',
+          'started_at': '2026-11-11T05:00:00Z',
+          'ended_at': '2026-11-11T09:00:00Z',
+          'online_at': '2026-11-11T05:30:00Z',
+          'planned_end_at': null,
+          'orders': 1,
+          'portions': 2,
+          'avg_delivery_s': 80,
+        },
+      ];
       final records = await ApiProfileRepository(session).watchShifts('rdr_1').first;
-      // The fake server pays 1 order, ₹70, on every day asked.
-      expect(records, hasLength(7));
+      // The fake server pays 1 order, ₹70, on every day asked; only days with a shift are listed.
+      expect(records, hasLength(1));
       expect(records.first.orders, 1);
       expect(records.first.earned, 70);
       expect(records.first.onlineAt, DateTime.utc(2026, 11, 11, 5, 30).toLocal());
-      expect(records[1].endedAt, records[1].onlineAt);
+      expect(records.first.endedAt, DateTime.utc(2026, 11, 11, 9).toLocal());
+      expect(records.first.plannedEnd, records.first.endedAt);
     });
   });
 
@@ -663,14 +723,28 @@ void main() {
       expect((await delivery.watchOrder(order.id).first)!.status, DeliveryStatus.delivered);
     });
 
-    test('The shift summary counts what was sold and how long it took; times outlive a restart', () async {
+    test("The shift summary is the shift's record on the server; the ride's start outlives a restart", () async {
       final order = await accepted();
       await delivery.startNavigation(order.id);
       later = const Duration(seconds: 90);
+      // What the server counts once the handover is in.
+      server.history = [
+        {
+          'id': 'shf_1',
+          'node_id': 'node_7',
+          'started_at': '2026-11-11T05:00:00Z',
+          'ended_at': null,
+          'online_at': null,
+          'planned_end_at': null,
+          'orders': 1,
+          'portions': 2,
+          'avg_delivery_s': 90,
+        },
+      ];
       await delivery.completeHandover(
         HandoverRequest(orderId: order.id, proof: HandoverProof.code, code: '4821', items: const [OrderItem(name: 'Burger', quantity: 2)]),
       );
-      await pumpEventQueue();
+      await session.refresh(full: true);
       final status = await online.watch('rdr_1', 'd').first;
       expect(status.sold, 2);
       expect(status.averageDeliverySeconds, 90);
@@ -1120,6 +1194,78 @@ void main() {
         ApiStockRepository(session).moveToQuarantine('rdr_1', '2026-11-11', QuarantineRequest(lotId: 'lot_1', itemId: 'item_burger', at: now)),
         throwsA(isA<AppException>()),
       );
+    });
+
+    test('Going online, a break and Add time are the shift on the server', () async {
+      server.shift = {'id': 'shf_1', 'node_id': 'node_7', 'started_at': '2026-11-11T05:00:00Z', 'ended_at': null, 'break': null};
+      final online = ApiOnlineRepository(session);
+      await session.ensureLoaded();
+      await online.markOnline('rdr_1', 'd');
+      expect(server.requests.where((r) => r.url.path.endsWith('/shifts/online')), hasLength(1));
+      var status = await online.watch('rdr_1', 'd').first;
+      expect(status.onlineAt, DateTime.utc(2026, 11, 11, 5, 30).toLocal());
+
+      await online.setBreak('rdr_1', 'd', BreakState(startedAt: now, length: const Duration(minutes: 15)));
+      expect(server.bodies('/shifts/break').single, {'length_s': 900});
+      status = await online.watch('rdr_1', 'd').first;
+      expect(status.breakState!.startedAt, DateTime.utc(2026, 11, 11, 6).toLocal());
+      expect(status.breakState!.length, const Duration(minutes: 15));
+      await online.setBreak('rdr_1', 'd', null);
+      expect(server.requests.where((r) => r.url.path.endsWith('/shifts/break/end')), hasLength(1));
+      expect((await online.watch('rdr_1', 'd').first).breakState, isNull);
+
+      await online.setShiftEnd('rdr_1', 'd', DateTime.utc(2026, 11, 11, 14));
+      expect(server.bodies('/shifts/planned-end').single, {'planned_end_at': '2026-11-11T14:00:00.000Z'});
+      expect((await online.watch('rdr_1', 'd').first).shiftEnd, DateTime.utc(2026, 11, 11, 14).toLocal());
+      // Nothing about the day is kept on the phone.
+      expect(session.day.keys, isNot(contains('onlineAt')));
+      expect(session.day.keys, isNot(contains('break')));
+      expect(session.day.keys, isNot(contains('shiftEnd')));
+    });
+
+    test("Sold and the average time are the shift's record; My shifts come from GET /riders/me/shifts", () async {
+      server.shift = {'id': 'shf_1', 'node_id': 'node_7', 'started_at': '2026-11-11T05:00:00Z', 'ended_at': null};
+      server.history = [
+        {
+          'id': 'shf_1',
+          'node_id': 'node_7',
+          'started_at': '2026-11-11T05:00:00Z',
+          'ended_at': null,
+          'online_at': '2026-11-11T05:20:00Z',
+          'planned_end_at': '2026-11-11T13:00:00Z',
+          'orders': 3,
+          'portions': 5,
+          'avg_delivery_s': 88,
+        },
+        {
+          'id': 'shf_0',
+          'node_id': 'node_7',
+          'started_at': '2026-11-09T05:00:00Z',
+          'ended_at': '2026-11-09T12:00:00Z',
+          'online_at': '2026-11-09T05:10:00Z',
+          'planned_end_at': '2026-11-09T13:00:00Z',
+          'orders': 9,
+          'portions': 11,
+          'avg_delivery_s': 95,
+        },
+      ];
+      await session.refresh(full: true);
+      final status = await ApiOnlineRepository(session).watch('rdr_1', 'd').first;
+      expect(status.sold, 5);
+      expect(status.averageDeliverySeconds, 88);
+      final records = await ApiProfileRepository(session).watchShifts('rdr_1').first;
+      expect(records, hasLength(2));
+      expect(records.first.onlineAt, DateTime.utc(2026, 11, 11, 5, 20).toLocal());
+      expect(records.first.endedAt, isNull);
+      expect(records.last.onlineAt, DateTime.utc(2026, 11, 9, 5, 10).toLocal());
+      expect(records.last.endedAt, DateTime.utc(2026, 11, 9, 12).toLocal());
+      expect(records.last.earned, 70);
+    });
+
+    test("The rider's phone comes from GET /riders/me", () async {
+      server.riderFields = {'phone': '+919811112222'};
+      final application = await ApiRegistrationRepository(session).watch('rdr_1').first;
+      expect(application!.phone, '+919811112222');
     });
 
     test('A shift started on another phone is open elsewhere; this phone sends its device', () async {

@@ -186,7 +186,6 @@ class ApiShiftRepository implements ShiftRepository {
       if (e.code != 'no_open_shift') throw AppException(e.code);
     }
     _session.stopPings();
-    await _session.setDay({'endedAt': _session.clock().toUtc().toIso8601String()});
     await _session.refresh();
   }
 

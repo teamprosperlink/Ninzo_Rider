@@ -33,6 +33,21 @@ enum ShiftPush {
 
   /// Asks the rider to reply.
   bool get hasActions => this == prepareStock || this == reminder;
+
+  /// The pushes the rider API sends itself (FCM), so the phone doesn't
+  /// schedule them. The stock request, with its replies, and "away from your
+  /// spot", which only the phone's GPS knows, stay the phone's.
+  static const fromServer = {stockReady, spotAssigned, shiftEndingSoon, ordersWaiting};
+
+  /// The push for a rider API notification's `notification_kind`, if the
+  /// phone shows it.
+  static ShiftPush? ofServerKind(String? kind) => switch (kind) {
+    'stock_ready' => stockReady,
+    'spot_assigned' => spotAssigned,
+    'shift_ending_soon' => shiftEndingSoon,
+    'orders_waiting' => ordersWaiting,
+    _ => null,
+  };
 }
 
 /// What the rider tapped on a push.

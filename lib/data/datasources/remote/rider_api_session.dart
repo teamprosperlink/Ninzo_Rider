@@ -172,6 +172,13 @@ class RiderApiSession {
   /// request and the hub's packing; null on a day with none.
   Map<String, dynamic>? shiftPlan;
 
+  /// `GET /riders/me/shifts`: the last 7 days' shifts, newest first, with
+  /// their times and what was delivered.
+  List<Map<String, dynamic>> shiftHistory = const [];
+
+  /// `GET /riders/me/documents`: the document photos uploaded.
+  List<Map<String, dynamic>> documents = const [];
+
   /// Where verification goes next (`upload_url`, `redirect_url`), once a
   /// failed or expired one was started again.
   Map<String, dynamic>? verificationNext;
@@ -427,6 +434,8 @@ class RiderApiSession {
       restockDetail,
       shiftPlan,
       notifications,
+      shiftHistory,
+      documents,
       hubs,
       rider,
       day,
@@ -486,6 +495,41 @@ class RiderApiSession {
     } on RiderApiException {
       // Keeps the last.
     }
+    try {
+      shiftHistory = [
+        ...((await api.listShifts(days: historyDays))['shifts'] as List? ?? const []).cast<Map<String, dynamic>>(),
+      ];
+    } on RiderApiException {
+      // Keeps the last.
+    }
+    try {
+      documents = [...((await api.listDocuments())['documents'] as List? ?? const []).cast<Map<String, dynamic>>()];
+    } on RiderApiException {
+      // Keeps the last.
+    }
+  }
+
+  /// `GET /riders/me/documents` now, after an upload.
+  Future<void> refreshDocuments() async {
+    try {
+      documents = [...((await api.listDocuments())['documents'] as List? ?? const []).cast<Map<String, dynamic>>()];
+      notify();
+    } on RiderApiException {
+      // The next poll brings it.
+    }
+  }
+
+  /// How many days of shifts My shifts shows.
+  static const historyDays = 7;
+
+  /// The shift [shiftId] as `GET /riders/me/shifts` last listed it.
+  Map<String, dynamic>? shiftRecord(String? shiftId) => shiftHistory.where((s) => s['id'] == shiftId).firstOrNull;
+
+  /// One of the shift calls (online, break, planned end): its reply is the shift now.
+  Future<void> changeShift(Future<Map<String, dynamic>> Function() call) async {
+    final shift = (await call())['shift'] as Map<String, dynamic>?;
+    if (shift != null) state = {...?state, 'shift': shift};
+    notify();
   }
 
   /// `POST /riders/me/shift-plan/reply`: coming or not_today.
@@ -513,17 +557,13 @@ class RiderApiSession {
     notify();
   }
 
-  // ── Past days (Profile 06) ──
-
-  /// What this phone kept of [date] ("yyyy-MM-dd").
-  Future<Map<String, dynamic>> dayOn(String date) async {
-    final riderId = (await api.client.tokens.read())?.riderId;
-    return _store.load('riderApi.day.$riderId.$date');
-  }
 
   /// "yyyy-MM-dd" in India, [daysAgo] days back.
-  String indiaDateAgo(int daysAgo) {
-    final d = clock().toUtc().add(_indiaOffset).subtract(Duration(days: daysAgo));
+  String indiaDateAgo(int daysAgo) => indiaDateOf(clock().subtract(Duration(days: daysAgo)));
+
+  /// "yyyy-MM-dd" of [at] in India.
+  String indiaDateOf(DateTime at) {
+    final d = at.toUtc().add(_indiaOffset);
     return '${d.year}-${_two(d.month)}-${_two(d.day)}';
   }
 
@@ -717,6 +757,8 @@ class RiderApiSession {
     suggestions = const [];
     shiftPlan = null;
     notifications = const [];
+    shiftHistory = const [];
+    documents = const [];
     verification = null;
     orders.clear();
   }

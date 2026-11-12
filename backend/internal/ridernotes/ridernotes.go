@@ -41,10 +41,18 @@ func Add(ctx context.Context, tx pgx.Tx, riderID, kind, title, body string) erro
 		riderID, kind, title, body).Scan(&id); err != nil {
 		return err
 	}
+	// The app shows the stock request itself, with its "I'm coming" and "Not today" buttons, at the
+	// times the plan gives; a push from here would show it twice.
+	if !Pushed(kind) {
+		return nil
+	}
 	return outbox.Add(ctx, tx, "push.rider", map[string]any{
 		"rider_id": riderID, "kind": "notification", "notification_id": id, "notification_kind": kind, "title": title, "body": body,
 	})
 }
+
+// Pushed says whether a kind also goes out as a push. All do but the stock request.
+func Pushed(kind string) bool { return kind != StockRequest }
 
 // clip shortens s to at most n runes.
 func clip(s string, n int) string {

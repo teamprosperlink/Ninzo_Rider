@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +7,10 @@ import 'package:http/testing.dart';
 import 'package:ninzo_rider/data/datasources/remote/push_token_source.dart';
 import 'package:ninzo_rider/data/datasources/remote/rider_api.dart';
 import 'package:ninzo_rider/data/datasources/remote/rider_api_client.dart';
+import 'package:ninzo_rider/data/datasources/remote/server_pushes.dart';
+import 'package:ninzo_rider/domain/entities/push_plan.dart';
+import 'package:ninzo_rider/domain/entities/shift_push.dart';
+import 'package:ninzo_rider/domain/usecases/shift_push_usecases.dart';
 import 'package:ninzo_rider/data/repositories/api_auth_repositories.dart';
 import 'package:ninzo_rider/domain/entities/auth_failure.dart';
 
@@ -31,6 +36,11 @@ class _Push implements PushTokenSource {
 
   @override
   Stream<String> get refreshed => const Stream.empty();
+
+  final pushes = StreamController<Map<String, String>>.broadcast();
+
+  @override
+  Stream<Map<String, String>> get messages => pushes.stream;
 }
 
 http.Response _json(int status, Object body) =>
@@ -151,5 +161,33 @@ void main() {
     expect(keys, hasLength(2));
     expect(keys.first, isNotNull);
     expect(keys.first, keys.last);
+  });
+
+  test("The rider API's pushes are shown by kind; the phone doesn't schedule them too", () async {
+    final source = _Push();
+    final pushes = FcmServerPushes(source);
+    final got = <ShiftPush>[];
+    final listening = pushes.arrived.listen(got.add);
+    for (final data in [
+      {'topic': 'push.rider', 'kind': 'notification', 'notification_kind': 'stock_ready'},
+      {'topic': 'push.rider', 'kind': 'notification', 'notification_kind': 'shift_ending_soon'},
+      {'topic': 'push.rider', 'kind': 'notification', 'notification_kind': 'stock_request'},
+      {'topic': 'push.rider', 'kind': 'offer'},
+      {'topic': 'push.customer', 'kind': 'notification', 'notification_kind': 'stock_ready'},
+    ]) {
+      source.pushes.add(data);
+    }
+    await pumpEventQueue();
+    expect(got, [ShiftPush.stockReady, ShiftPush.shiftEndingSoon]);
+    await listening.cancel();
+
+    final plan = PushPlan(
+      schedule: {ShiftPush.shiftEndingSoon: DateTime(2026), ShiftPush.prepareStock: DateTime(2026)},
+      showNow: {ShiftPush.spotAssigned, ShiftPush.awayFromSpot},
+    );
+    final filtered = WatchServerPushes(pushes).withoutServerSent(plan);
+    expect(filtered.schedule.keys, [ShiftPush.prepareStock]);
+    expect(filtered.showNow, {ShiftPush.awayFromSpot});
+    expect(WatchServerPushes(const NoServerPushes()).withoutServerSent(plan).schedule, hasLength(2));
   });
 }

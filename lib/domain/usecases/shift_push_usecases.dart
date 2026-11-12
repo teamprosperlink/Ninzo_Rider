@@ -1,3 +1,4 @@
+import '../entities/push_plan.dart';
 import '../entities/shift.dart';
 import '../entities/shift_push.dart';
 import '../repositories/shift_notifier.dart';
@@ -30,6 +31,30 @@ class WatchOpenedPushes {
   final ShiftNotifier _notifier;
 
   Stream<ShiftPush> call() => _notifier.opened;
+}
+
+/// The rider API's own pushes, arriving while the app is open, and which
+/// kinds it sends (so the phone doesn't schedule those too).
+class WatchServerPushes {
+  const WatchServerPushes(this._pushes);
+
+  final ServerPushes _pushes;
+
+  Stream<ShiftPush> call() => _pushes.arrived;
+
+  /// [plan] without what the server sends itself.
+  PushPlan withoutServerSent(PushPlan plan) {
+    if (!_pushes.active) return plan;
+    return PushPlan(
+      schedule: {
+        for (final MapEntry(:key, :value) in plan.schedule.entries)
+          if (!ShiftPush.fromServer.contains(key)) key: value,
+      },
+      cancel: plan.cancel,
+      showNow: plan.showNow.difference(ShiftPush.fromServer),
+      detail: plan.detail,
+    );
+  }
 }
 
 class SchedulePush {

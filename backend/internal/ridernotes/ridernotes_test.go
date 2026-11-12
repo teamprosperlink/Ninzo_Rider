@@ -5,6 +5,14 @@ import (
 	"testing"
 )
 
+func TestTheStockRequestIsNotPushed(t *testing.T) {
+	for kind, want := range map[string]bool{StockRequest: false, StockReady: true, SpotAssigned: true, OrdersWaiting: true, ShiftEndingSoon: true} {
+		if Pushed(kind) != want {
+			t.Errorf("%s: %v", kind, !want)
+		}
+	}
+}
+
 func TestClipKeepsWholeRunes(t *testing.T) {
 	for _, c := range []struct {
 		in   string

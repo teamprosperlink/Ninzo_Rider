@@ -13,10 +13,14 @@ abstract interface class PushTokenSource {
 
   /// A new token after the old one was replaced.
   Stream<String> get refreshed;
+
+  /// Pushes from the rider API that arrive while the app is open, as their
+  /// data. (With the app closed the phone shows them itself.)
+  Stream<Map<String, String>> get messages;
 }
 
-/// Firebase Cloud Messaging. Push only logs on the server until FCM is
-/// connected there, but the device is registered as usual.
+/// Firebase Cloud Messaging: the token the rider API sends pushes to, and
+/// the pushes that arrive while the app is open.
 class FirebasePushTokenSource implements PushTokenSource {
   const FirebasePushTokenSource();
 
@@ -39,4 +43,8 @@ class FirebasePushTokenSource implements PushTokenSource {
   @override
   // ignore: deprecated_member_use
   Stream<String> get refreshed => FirebaseMessaging.instance.onTokenRefresh;
+
+  @override
+  Stream<Map<String, String>> get messages =>
+      FirebaseMessaging.onMessage.map((m) => {for (final MapEntry(:key, :value) in m.data.entries) key: '$value'});
 }

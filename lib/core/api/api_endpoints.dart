@@ -35,6 +35,12 @@ abstract final class RiderApiEndpoints {
   static const nodes = '/nodes';
   static const shiftStart = '/riders/me/shifts/start';
   static const shiftEnd = '/riders/me/shifts/end';
+  static const shifts = '/riders/me/shifts';
+  static const shiftOnline = '/riders/me/shifts/online';
+  static const shiftBreak = '/riders/me/shifts/break';
+  static const shiftBreakEnd = '/riders/me/shifts/break/end';
+  static const shiftPlannedEnd = '/riders/me/shifts/planned-end';
+  static const documents = '/riders/me/documents';
   static String acceptRelocation(String relocationId) => '/riders/me/relocations/$relocationId/accept';
 
   // ── Stock ──
