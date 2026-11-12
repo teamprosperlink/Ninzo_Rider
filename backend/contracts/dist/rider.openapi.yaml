@@ -233,6 +233,30 @@ components:
                 - rejected
                 - server_time
             type: object
+        FeedbackResponse:
+            properties:
+                feedback_id:
+                    $ref: '#/components/schemas/Id'
+                server_time:
+                    $ref: '#/components/schemas/ServerTime'
+            required:
+                - feedback_id
+                - server_time
+            type: object
+        GateCheck:
+            properties:
+                checked:
+                    description: False when the gate has no code, so arrival is by location alone.
+                    type: boolean
+                matched:
+                    type: boolean
+                server_time:
+                    $ref: '#/components/schemas/ServerTime'
+            required:
+                - checked
+                - matched
+                - server_time
+            type: object
         HandoverEvent:
             properties:
                 device_time:
@@ -1072,6 +1096,21 @@ components:
                 - lat
                 - lng
             type: object
+        RiderChoice:
+            properties:
+                check:
+                    description: 'Checklist items only: what the app checks itself. manual is the rider''s tick; phone_battery, scooter_battery and location the app checks.'
+                    type: string
+                code:
+                    type: string
+                hint:
+                    type: string
+                label:
+                    type: string
+            required:
+                - code
+                - label
+            type: object
         RiderDocumentInfo:
             properties:
                 content_type:
@@ -1113,6 +1152,29 @@ components:
                     $ref: '#/components/schemas/ServerTime'
             required:
                 - document
+                - server_time
+            type: object
+        RiderHelp:
+            properties:
+                faq:
+                    items:
+                        properties:
+                            answer:
+                                type: string
+                            id:
+                                $ref: '#/components/schemas/Id'
+                            question:
+                                type: string
+                        required:
+                            - id
+                            - question
+                            - answer
+                        type: object
+                    type: array
+                server_time:
+                    $ref: '#/components/schemas/ServerTime'
+            required:
+                - faq
                 - server_time
             type: object
         RiderNotification:
@@ -1272,6 +1334,100 @@ components:
                 - expires_in_s
                 - rider_id
                 - status
+                - server_time
+            type: object
+        RiderSettings:
+            description: What the rider app works by, from the rider's zone settings. Null where the zone has no value.
+            properties:
+                add_time_options_s:
+                    items:
+                        type: integer
+                    type: array
+                almost_there_m:
+                    type:
+                        - integer
+                        - "null"
+                arrive_m:
+                    description: How close to the hub, the spot or the gate counts as there.
+                    type:
+                        - integer
+                        - "null"
+                away_from_spot_m:
+                    type:
+                        - integer
+                        - "null"
+                break_options_s:
+                    items:
+                        type: integer
+                    type: array
+                checklist:
+                    items:
+                        $ref: '#/components/schemas/RiderChoice'
+                    type: array
+                low_scooter_battery_pct:
+                    type:
+                        - integer
+                        - "null"
+                low_stock_qty:
+                    description: Fewer portions of an item than this suggests a refill.
+                    type:
+                        - integer
+                        - "null"
+                min_phone_battery_pct:
+                    type:
+                        - integer
+                        - "null"
+                min_scooter_battery_pct:
+                    type:
+                        - integer
+                        - "null"
+                problem_types:
+                    description: Each code is a reportProblem type.
+                    items:
+                        $ref: '#/components/schemas/RiderChoice'
+                    type: array
+                ride_speed_kmh:
+                    description: The straight-line speed used for ride times, until real road times.
+                    type:
+                        - integer
+                        - "null"
+                scooter_capacity_qty:
+                    type:
+                        - integer
+                        - "null"
+                skip_reasons:
+                    items:
+                        $ref: '#/components/schemas/RiderChoice'
+                    type: array
+                timer_length_s:
+                    type:
+                        - integer
+                        - "null"
+            required:
+                - timer_length_s
+                - arrive_m
+                - almost_there_m
+                - away_from_spot_m
+                - low_stock_qty
+                - scooter_capacity_qty
+                - min_phone_battery_pct
+                - min_scooter_battery_pct
+                - low_scooter_battery_pct
+                - ride_speed_kmh
+                - break_options_s
+                - add_time_options_s
+                - skip_reasons
+                - problem_types
+                - checklist
+            type: object
+        RiderSettingsResponse:
+            properties:
+                server_time:
+                    $ref: '#/components/schemas/ServerTime'
+                settings:
+                    $ref: '#/components/schemas/RiderSettings'
+            required:
+                - settings
                 - server_time
             type: object
         RiderState:
@@ -2093,6 +2249,56 @@ paths:
             summary: Call the customer through a masked number
             tags:
                 - delivery
+    /orders/{order_id}/gate-check:
+        post:
+            description: 'Compares what the rider scanned or typed with the code printed at the gate. It changes nothing, so it takes no Idempotency-Key. checked is false when the gate has no code: arrival is then by location alone (decision 0012) and matched is true. The order must be one this rider accepted, or 404.'
+            operationId: checkGate
+            parameters:
+                - $ref: '#/components/parameters/OrderId'
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            example:
+                                method: code
+                                value: GATE-4821
+                            properties:
+                                method:
+                                    enum:
+                                        - qr
+                                        - code
+                                    type: string
+                                value:
+                                    maxLength: 64
+                                    minLength: 1
+                                    type: string
+                            required:
+                                - method
+                                - value
+                            type: object
+                required: true
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GateCheck'
+                    description: The result.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: Check the gate's QR code or code
+            tags:
+                - delivery
     /orders/{order_id}/handover:
         post:
             description: 'Sends the OTP the customer shows, and the quantities. Recorded once. Queue the event first, and use its event_id as the Idempotency-Key, so the direct and queued paths count as one. A repeat by the same rider after success returns success. Allowed from PACKED, TIMER_RUNNING or ARRIVED, and from RIDER_ACCEPTED once the code was released after a lost signal. Rejected with rider_not_near if the handover is current and fresh GPS shows the rider away from the gate. Errors, all 409: wrong_otp, otp_attempts_exceeded, handover_not_allowed, rider_not_near, order_cancelled, order_reassigned.'
@@ -2727,6 +2933,72 @@ paths:
             summary: Send queued offline events
             tags:
                 - location
+    /riders/me/feedback:
+        post:
+            operationId: sendRiderFeedback
+            parameters:
+                - $ref: '#/components/parameters/IdempotencyKey'
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            example:
+                                message: The map is hard to read at night.
+                            properties:
+                                message:
+                                    maxLength: 2000
+                                    minLength: 1
+                                    type: string
+                            required:
+                                - message
+                            type: object
+                required: true
+            responses:
+                "201":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/FeedbackResponse'
+                    description: Sent.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/IdempotencyKeyReused'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: Send feedback about the app
+            tags:
+                - support
+    /riders/me/help:
+        get:
+            description: In the order operations set.
+            operationId: getRiderHelp
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RiderHelp'
+                    description: The help centre.
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: Get the help centre's questions and answers
+            tags:
+                - support
     /riders/me/location:
         post:
             description: Accepted at once, and processed afterwards. This is what starts and stops the customer's timer, so send at the rate in next_ping_s.
@@ -2939,6 +3211,28 @@ paths:
             summary: List suggested restocks
             tags:
                 - restock
+    /riders/me/settings:
+        get:
+            description: The rider's zone settings (the timer, the distances, battery levels, stock limits, the straight-line speed) and every choice the app offers (break and Add time lengths, skip reasons, problem types, the Before you start checklist). The app has none of its own.
+            operationId: getRiderSettings
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RiderSettingsResponse'
+                    description: The settings.
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            summary: Get the settings and choices the rider app works by
+            tags:
+                - profile
     /riders/me/shift-plan:
         get:
             description: 'Today''s plan in the zone''s local time: when the shift starts and ends, the morning stock request (the rider says they are coming, or not today) and how the hub''s packing is going. Operations make the plan. plan is null on a day with none.'
@@ -3230,6 +3524,12 @@ paths:
                     application/json:
                         schema:
                             properties:
+                                checklist:
+                                    description: The Before you start items the rider ticked, by the codes getRiderSettings lists, each once. Kept with the shift.
+                                    items:
+                                        type: string
+                                    maxItems: 20
+                                    type: array
                                 device_id:
                                     $ref: '#/components/schemas/Id'
                                     description: The device_id from registerRiderDevice of the phone starting the shift. Optional. It comes back on the shift, so another phone of the same rider can tell the shift is open elsewhere. A device that is not this rider's gets 400.

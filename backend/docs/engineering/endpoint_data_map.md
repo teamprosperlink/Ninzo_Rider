@@ -28,6 +28,8 @@ Each table belongs to one module, and only that module has SQL for it (`project_
 | `identity` | `otp_requests` | Hashed codes, their purpose, and attempts | v0.2.0 |
 | `identity` | `refresh_tokens` | Hashed refresh tokens and their chains | v0.2.0 |
 | `notify` | `devices` | Push tokens | v0.2.0 |
+| `support` | `help_articles` | The help centre's questions and answers, per app | migration 0042 |
+| `support` | `rider_feedback` | What riders send through Send feedback | migration 0042 |
 | `notify` | `rider_notifications` | What each rider was told, each also sent as a push | migration 0040 |
 | `geo` | `zones` | Service areas | v0.3.0 |
 | `geo` | `zone_settings` | Timer length, perimeter, waits and limits, by version. One global row, overridden per zone | v0.3.0 |
@@ -193,6 +195,10 @@ Until a later table exists, an endpoint simply does not use it: `listNodes` has 
 | `setPlannedEnd` | `shifts` | `shifts`, `rider_state`, `audit_events`, `idempotency_keys` | | |
 | `listShifts` | `shifts`, `offers`, `orders`, `order_items` | | | |
 | `listRiderDocuments` | `rider_documents` | | | |
+| `getRiderSettings` | `riders`, `zone_settings` | | | |
+| `getRiderHelp` | `help_articles` | | | |
+| `sendRiderFeedback` | `riders` | `rider_feedback`, `idempotency_keys` | | |
+| `checkGate` | `orders`, `offers`, `gates` | | | |
 | `uploadRiderDocument` | `riders`, `rider_verifications` | `rider_documents`, `audit_events`, `idempotency_keys` | | |
 
 ## 4.1 Partner API

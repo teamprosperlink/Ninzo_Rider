@@ -412,6 +412,44 @@ func riderRoutes() []route {
 					"online_at": stamp(yesterday.Add(-7*time.Hour - 40*time.Minute)), "planned_end_at": stamp(yesterday), "orders": 12, "portions": 15, "avg_delivery_s": 92},
 			}})
 		}},
+		{method: "GET", path: "/riders/me/settings", handle: func(c *call) {
+			c.json(200, map[string]any{"settings": map[string]any{
+				"timer_length_s": 90, "arrive_m": 100, "almost_there_m": 300, "away_from_spot_m": 150, "low_stock_qty": 5,
+				"scooter_capacity_qty": 8, "min_phone_battery_pct": 50, "min_scooter_battery_pct": 40, "low_scooter_battery_pct": 20,
+				"ride_speed_kmh": 15, "break_options_s": []int{900, 1800, 2700, 3600}, "add_time_options_s": []int{900, 1800, 2700, 3600, 7200, 10800, 14400},
+				"skip_reasons": []map[string]string{{"code": "scooterProblem", "label": "Scooter problem"}, {"code": "itemMissing", "label": "Item missing or damaged"},
+					{"code": "notSafe", "label": "Not safe to ride"}, {"code": "somethingElse", "label": "Something else"}},
+				"problem_types": []map[string]string{{"code": "breakdown", "label": "Breakdown", "hint": "Scooter won’t run"},
+					{"code": "accident", "label": "Accident", "hint": "Tell us you’re safe"}, {"code": "gate_closed", "label": "Gate closed", "hint": "Can’t get in"},
+					{"code": "customer_absent", "label": "Customer absent", "hint": "Not at the gate"}, {"code": "unsafe_route", "label": "Unsafe route", "hint": "Road feels unsafe"}},
+				"checklist": []map[string]string{{"code": "helmet", "label": "Helmet on", "check": "manual"}, {"code": "phoneCharged", "label": "Phone charged", "check": "phone_battery"},
+					{"code": "scooterBattery", "label": "Scooter battery OK", "check": "scooter_battery"}, {"code": "location", "label": "Location is on", "check": "location"},
+					{"code": "insulatedBox", "label": "Insulated box ready", "check": "manual"}, {"code": "scooterClean", "label": "Scooter is clean", "check": "manual"}},
+			}})
+		}},
+		{method: "GET", path: "/riders/me/help", handle: func(c *call) {
+			c.json(200, map[string]any{"faq": []map[string]any{
+				{"id": "faq_mock01", "question": "How do I go online?", "answer": "Finish the checklist, ride to your hub, scan your stock, then ride to your spot."},
+				{"id": "faq_mock02", "question": "Customer isn't at the gate", "answer": "Wait at the gate, then use Report a problem and choose Customer absent."},
+			}})
+		}},
+		{method: "POST", path: "/riders/me/feedback", handle: func(c *call) {
+			if _, ok := needsBody(c, "message"); ok {
+				c.json(201, map[string]any{"feedback_id": "fbk_mock01"})
+			}
+		}},
+		{method: "POST", path: "/orders/{order_id}/gate-check", noIdempotent: true, handle: func(c *call) {
+			body, ok := needsBody(c, "method", "value")
+			if !ok {
+				return
+			}
+			if m := body["method"]; m != "qr" && m != "code" {
+				c.fail(400, "invalid_request", "Send method (qr or code) and value.", false)
+				return
+			}
+			value, _ := body["value"].(string)
+			c.json(200, map[string]any{"checked": true, "matched": strings.EqualFold(value, "GATE-4821") || strings.HasSuffix(strings.ToUpper(value), "GATE-4821")})
+		}},
 		{method: "GET", path: "/riders/me/documents", handle: func(c *call) {
 			c.json(200, map[string]any{"documents": []map[string]any{
 				{"document": "aadhaar", "side": "front", "content_type": "image/jpeg", "size_bytes": 182344, "uploaded_at": stamp(c.now.Add(-30 * 24 * time.Hour))},

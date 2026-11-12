@@ -30,9 +30,11 @@ var operationsWithoutIdempotency = map[string]bool{
 	"razorpayWebhook":    true,
 	"locationPing":       true,
 	"sendEventBatch":     true,
-	"consoleLogin":       true,
-	"enrollTotp":         true,
-	"verifyTotp":         true,
+	// checkGate only compares a code; it changes nothing.
+	"checkGate":    true,
+	"consoleLogin": true,
+	"enrollTotp":   true,
+	"verifyTotp":   true,
 }
 
 // operationsWithoutBearer are the only operations allowed to skip sign-in.

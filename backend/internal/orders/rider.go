@@ -37,6 +37,7 @@ func (s *Service) MountRider(r chi.Router, signedIn ...func(http.Handler) http.H
 		g.Get("/orders/{order_id}/route", s.getRoute)
 		g.With(idem).Post("/orders/{order_id}/handover", s.handOver)
 		g.With(idem).Post("/orders/{order_id}/call", s.startRiderCall)
+		g.Post("/orders/{order_id}/gate-check", s.checkGate) // Reads only: no Idempotency-Key.
 		g.With(idem).Post("/riders/me/problems", s.reportProblem)
 		g.Post("/riders/me/events", s.sendEventBatch)
 	})

@@ -563,3 +563,38 @@ func TestPolylineEncoding(t *testing.T) {
 		t.Errorf("%s", got)
 	}
 }
+
+func TestTheGateCodeIsCheckedOnTheServer(t *testing.T) {
+	tr := started(t, true)
+	check := func(tok, body string) (int, map[string]any) {
+		t.Helper()
+		return tr.call("POST", "/orders/"+tr.order+"/gate-check", tok, body)
+	}
+	// A gate with no code: arrival is by location alone.
+	code, out := check(tr.tok, `{"method":"code","value":"anything"}`)
+	if code != 200 || out["checked"] != false || out["matched"] != true {
+		t.Fatalf("no code: %d %v", code, out)
+	}
+	if _, err := tr.pool.Exec(context.Background(), "UPDATE gates SET rider_code = 'GATE-4821' WHERE id = (SELECT gate_id FROM orders WHERE id = $1)", tr.order); err != nil {
+		t.Fatal(err)
+	}
+	for body, want := range map[string]bool{
+		`{"method":"code","value":"gate-4821"}`:                       true,
+		`{"method":"qr","value":"https://ninzo.example/g/GATE-4821"}`: true,
+		`{"method":"code","value":"GATE-4820"}`:                       false,
+		`{"method":"code","value":"x/GATE-4821"}`:                     false,
+	} {
+		if code, out := check(tr.tok, body); code != 200 || out["checked"] != true || out["matched"] != want {
+			t.Errorf("%s: %d %v", body, code, out)
+		}
+	}
+	for _, body := range []string{`{}`, `{"method":"face","value":"x"}`, `{"method":"code","value":" "}`} {
+		if code, _ := check(tr.tok, body); code != 400 {
+			t.Errorf("%s: %d", body, code)
+		}
+	}
+	_, otherTok := tr.signIn(tr.scooterOnShift("SC-GATE-2"))
+	if code, _ := check(otherTok, `{"method":"code","value":"GATE-4821"}`); code != 404 {
+		t.Errorf("another rider's order: %d", code)
+	}
+}

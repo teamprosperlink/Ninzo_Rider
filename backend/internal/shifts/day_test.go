@@ -127,3 +127,20 @@ func TestTheShiftHistory(t *testing.T) {
 		t.Errorf("%v", rec)
 	}
 }
+
+func TestTheChecklistIsKeptWithTheShift(t *testing.T) {
+	f := newFixture(t)
+	f.scooter("SC-1")
+	rider, token := f.rider()
+	for _, list := range []string{`["helmet","helmet"]`, `["wings"]`} {
+		if code, out := f.send("POST", "/riders/me/shifts/start", token, `{"node_id":"`+f.node+`","checklist":`+list+`}`); code != 400 {
+			t.Errorf("%s: %d %v", list, code, out)
+		}
+	}
+	if code, out := f.send("POST", "/riders/me/shifts/start", token, `{"node_id":"`+f.node+`","checklist":["helmet","phoneCharged","scooterBattery","location","insulatedBox","scooterClean"]}`); code != 200 {
+		t.Fatalf("%d %v", code, out)
+	}
+	if n := f.count("SELECT cardinality(checklist) FROM shifts WHERE rider_id = $1", rider); n != 6 {
+		t.Errorf("%d items kept", n)
+	}
+}

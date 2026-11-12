@@ -25,6 +25,7 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/httpserver"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/idempotency"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/outbox"
+	"github.com/teamprosperlink/Ninzo_backend/internal/profile"
 	"github.com/teamprosperlink/Ninzo_backend/internal/relocation"
 	"github.com/teamprosperlink/Ninzo_backend/internal/ridernotes"
 )
@@ -221,13 +222,23 @@ func openShift(ctx context.Context, tx pgx.Tx, riderID string) (shift, string, b
 func (s *Service) startShift(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
 	var body struct {
-		NodeID   string  `json:"node_id"`
-		DeviceID *string `json:"device_id"`
+		NodeID    string   `json:"node_id"`
+		DeviceID  *string  `json:"device_id"`
+		Checklist []string `json:"checklist"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || !idPattern.MatchString(body.NodeID) ||
 		(body.DeviceID != nil && !idPattern.MatchString(*body.DeviceID)) {
 		httpserver.WriteError(w, http.StatusBadRequest, "invalid_request", "Send node_id, and device_id only as registered.", false)
 		return
+	}
+	// The "Before you start" items the rider ticked, as getRiderSettings lists them, each once.
+	known, seen := profile.ChecklistCodes(), map[string]bool{}
+	for _, c := range body.Checklist {
+		if !known[c] || seen[c] {
+			httpserver.WriteError(w, http.StatusBadRequest, "invalid_request", "checklist holds an item the rider app does not list, or one twice.", false)
+			return
+		}
+		seen[c] = true
 	}
 	errBadDevice := errors.New("shifts: not this rider's device")
 	var reply map[string]any
@@ -298,9 +309,9 @@ func (s *Service) startShift(w http.ResponseWriter, r *http.Request) {
 		var sh shift
 		var started time.Time
 		// The planned end comes from today's plan, if operations made one.
-		if err := tx.QueryRow(r.Context(), `INSERT INTO shifts (rider_id, node_id, scooter_id, device_id, planned_end_at)
-			VALUES ($1, $2, $3, $4, (SELECT p.ends_at FROM shift_plans p WHERE p.rider_id = $1 AND p.day = $5::date))
-			RETURNING id::text, node_id::text, started_at`, actor.ID, body.NodeID, scooter, body.DeviceID, IndiaDay(time.Now())).
+		if err := tx.QueryRow(r.Context(), `INSERT INTO shifts (rider_id, node_id, scooter_id, device_id, planned_end_at, checklist)
+			VALUES ($1, $2, $3, $4, (SELECT p.ends_at FROM shift_plans p WHERE p.rider_id = $1 AND p.day = $5::date), $6)
+			RETURNING id::text, node_id::text, started_at`, actor.ID, body.NodeID, scooter, body.DeviceID, IndiaDay(time.Now()), body.Checklist).
 			Scan(&sh.ID, &sh.NodeID, &started); err != nil {
 			return err
 		}

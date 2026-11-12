@@ -45,6 +45,7 @@ func newFixture(t *testing.T) *fixture {
 	}))
 	f.rider = httptest.NewServer(httpserver.NewRouter(quiet, func(context.Context) error { return nil }, func(r chi.Router) {
 		svc.MountRider(r, identity.RequireActor(f.s.Signer, identity.TypeRider))
+		svc.MountRiderApp(r, identity.RequireActor(f.s.Signer, identity.TypeRider))
 	}))
 	t.Cleanup(f.customer.Close)
 	t.Cleanup(f.rider.Close)

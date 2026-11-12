@@ -57,6 +57,13 @@ var Settings = []Setting{
 	{"incentive_paise", "paise", 0, 1000000, true, "The day's incentive"},
 	{"relocation_paise_per_minute", "paise", 0, 10000, true, "Pay for each started minute of an accepted move"},
 	{"relocation_max_paid_s", "seconds", 60, 3600, true, "The most moving time paid for one move"},
+	{"rider_arrive_m", "metres", 20, 500, true, "How close to the hub or spot counts as there, in the rider app"},
+	{"rider_almost_m", "metres", 50, 2000, true, "How close to the spot shows Almost there, in the rider app"},
+	{"rider_away_m", "metres", 50, 2000, true, "How far from the spot tells an online rider they have left it"},
+	{"scooter_capacity_qty", "units", 1, 100, true, "Most portions a scooter holds, the limit on a restock"},
+	{"min_phone_battery_pct", "percent", 0, 100, true, "Phone charge a rider needs to start"},
+	{"min_scooter_battery_pct", "percent", 0, 100, true, "Scooter charge a rider needs to start"},
+	{"low_scooter_battery_pct", "percent", 0, 100, true, "At or below this the rider app warns of a low scooter battery"},
 }
 
 // ErrInvalidSetting means a change was refused, and nothing was stored.

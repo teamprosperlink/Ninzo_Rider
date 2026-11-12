@@ -41,6 +41,7 @@ func main() {
 			identity.MountOTP(r, otps, identity.TypeRider)
 			profiles := &profile.Service{Pool: d.DB, Log: d.Log}
 			profiles.MountRider(r, identity.RequireActor(sessions.Signer, identity.TypeRider), limits.BySession())
+			profiles.MountRiderApp(r, identity.RequireActor(sessions.Signer, identity.TypeRider), limits.BySession())
 			work := &shifts.Service{Pool: d.DB, Log: d.Log}
 			work.MountRider(r, identity.RequireActor(sessions.Signer, identity.TypeRider), limits.BySession())
 			delivery := &orders.Service{Pool: d.DB, Log: d.Log}
