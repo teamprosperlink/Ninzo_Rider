@@ -45,7 +45,12 @@ func main() {
 			profiles.MountRiderApp(r, identity.RequireActor(sessions.Signer, identity.TypeRider), limits.BySession())
 			work := &shifts.Service{Pool: d.DB, Log: d.Log}
 			work.MountRider(r, identity.RequireActor(sessions.Signer, identity.TypeRider), limits.BySession())
+			// Scooter telemetry (the battery), signed with TELEMETRY_KEY rather than a rider's session.
+			(&shifts.Telemetry{Service: work, Key: os.Getenv("TELEMETRY_KEY")}).Mount(r)
 			delivery := &orders.Service{Pool: d.DB, Log: d.Log}
+			// Masked calls to the customer, once a provider's virtual number and webhook key are set.
+			delivery.RiderCalls = &orders.RiderCalls{VirtualNumber: os.Getenv("TELEPHONY_VIRTUAL_NUMBER"), WebhookKey: os.Getenv("TELEPHONY_WEBHOOK_KEY")}
+			delivery.MountCallWebhook(r)
 			delivery.MountRider(r, identity.RequireActor(sessions.Signer, identity.TypeRider), limits.BySession())
 			delivery.MountTracking(r, identity.RequireActor(sessions.Signer, identity.TypeRider), limits.ByPings())
 			delivery.MountRiderStream(r, &orders.Streams{Signer: sessions.Signer})

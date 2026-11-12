@@ -871,6 +871,67 @@ paths:
           $ref: ../shared/common.yaml#/components/responses/TooManyRequests
         '500':
           $ref: ../shared/common.yaml#/components/responses/InternalError
+  /scooters/{code}/telemetry:
+    post:
+      tags:
+      - shift
+      operationId: reportScooterTelemetry
+      summary: Report a scooter's battery
+      description: Called by the scooter, or the fleet system for it, not by the app. Signed with the
+        shared telemetry key. Only a newer reading replaces the one kept, and a reading older than 30
+        minutes is not shown to the rider (the shift's scooter.battery_pct).
+      security: []
+      parameters:
+      - name: code
+        in: path
+        required: true
+        description: The scooter code shown on the vehicle.
+        schema:
+          type: string
+          minLength: 1
+      - name: X-Telemetry-Key
+        in: header
+        required: true
+        description: The shared telemetry key.
+        schema:
+          type: string
+          minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - battery_pct
+              - at
+              example:
+                battery_pct: 72
+                at: '2026-11-12T06:00:00Z'
+              properties:
+                battery_pct:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                at:
+                  type: string
+                  format: date-time
+                  description: When the scooter read it. At most a minute ahead of the server.
+      responses:
+        '202':
+          description: Kept.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Done'
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ../shared/common.yaml#/components/responses/NotFound
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
   /nodes:
     get:
       tags:
@@ -1430,6 +1491,67 @@ paths:
           $ref: ../shared/common.yaml#/components/responses/NotFound
         '429':
           $ref: ../shared/common.yaml#/components/responses/TooManyRequests
+        '500':
+          $ref: ../shared/common.yaml#/components/responses/InternalError
+  /telephony/connect:
+    get:
+      tags:
+      - delivery
+      operationId: connectCall
+      summary: Tell the telephony provider whom a masked call connects to
+      description: Called by the telephony provider's dynamic connect flow, not by the app, when a
+        rider calls the virtual number from startRiderMaskedCall. Signed with the webhook key. The
+        answer is the customer of the caller's newest open bridge; with format=text, the number alone.
+      security: []
+      parameters:
+      - name: key
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: from
+        in: query
+        required: true
+        description: The caller's number, as the provider writes it.
+        schema:
+          type: string
+          minLength: 1
+      - name: to
+        in: query
+        required: false
+        description: The number called; when sent it must be the virtual number.
+        schema:
+          type: string
+      - name: format
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - json
+          - text
+      responses:
+        '200':
+          description: The number to connect to.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - number
+                - server_time
+                properties:
+                  number:
+                    type: string
+                  server_time:
+                    $ref: ../shared/common.yaml#/components/schemas/ServerTime
+        '400':
+          $ref: ../shared/common.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ../shared/common.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ../shared/common.yaml#/components/responses/NotFound
         '500':
           $ref: ../shared/common.yaml#/components/responses/InternalError
   /riders/me/location:

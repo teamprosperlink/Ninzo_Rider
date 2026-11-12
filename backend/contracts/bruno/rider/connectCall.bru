@@ -1,0 +1,16 @@
+meta {
+  name: connectCall
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/telephony/connect
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  X-Mock-Scenario: {{scenario}}
+}

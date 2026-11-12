@@ -51,5 +51,9 @@ func (s *Service) startRiderCall(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	s.fail(w, r, errNoCalls)
+	if !s.RiderCalls.ready() {
+		s.fail(w, r, errNoCalls)
+		return
+	}
+	s.bridgeRiderCall(w, r, actor, id)
 }

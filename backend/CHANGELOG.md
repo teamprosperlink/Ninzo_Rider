@@ -13,7 +13,10 @@ each with its Issue number. Entries are added in the same PR that ships the feat
 - Added: `POST /orders/{order_id}/gate-check` (`checkGate`): a gate's `rider_code`, or location alone when it has none (decision 0012). It changes nothing, so it takes no Idempotency-Key (added to the contract rules' list).
 - Added: migration 0042. Not applied to Supabase.
 - Changed: a rider's sign-in pauses for 30 minutes (`riderrules.SignInPause`) once a code runs out of attempts, as the rider app's design says; asking for a code or verifying during it answers 429 `otp_attempts_exceeded` with the time left as `Retry-After`. Customers are unchanged. Migration 0043 (`otp_requests.locked_at`).
-- Added: `cancel_pay_cap` on getRiderSettings, for the design's Navigate 06. Not done: paying a cancelled order, which would change the customer cancellation code.
+- Added: `cancel_pay_cap` on getRiderSettings, for the design's Navigate 06, and the pay itself: an order cancelled after a rider accepted it records a `cancellation` earning (the lesser of the cap and the price) in `orders.end`, shown in `order_earnings` but not counted as an order. Migration 0044.
+- Added: FCM for rider pushes: customer-api's push worker sends `push.rider` through `push.RiderOnly` once `FCM_PROJECT_ID` and `FCM_SERVICE_ACCOUNT_FILE` are set; customer pushes stay with the log pusher.
+- Added: `POST /scooters/{code}/telemetry` (`reportScooterTelemetry`, signed with `TELEMETRY_KEY`): the shift's `battery_pct` is the last reading, if under 30 minutes old. Migration 0045.
+- Added: rider masked calls: `startRiderMaskedCall` opens a five-minute bridge to the virtual number (`TELEPHONY_VIRTUAL_NUMBER`), and the provider's dynamic connect flow asks `GET /telephony/connect` (`connectCall`, signed with `TELEPHONY_WEBHOOK_KEY`) whom to connect. Customer calls are unchanged. Migration 0046.
 
 ### The rider's day and documents on the server (no Issue yet: made in the rider app repo's `backend/` copy)
 - Added: `POST /riders/me/shifts/online` (`goOnline`), `POST /riders/me/shifts/break` (`takeBreak`, also extends one under way), `POST /riders/me/shifts/break/end` (`endBreak`) and `POST /riders/me/shifts/planned-end` (`setPlannedEnd`, "Add time"). The shift carries `online_at` and `break`.
@@ -21,7 +24,7 @@ each with its Issue number. Entries are added in the same PR that ships the feat
 - Added: `GET /riders/me/shifts?days=` (`listShifts`): each shift's times, orders and portions handed over, and the average seconds from accept to handover.
 - Added: `GET`/`POST /riders/me/documents` (`listRiderDocuments`, `uploadRiderDocument`): document photos as base64 JSON, at most 700 KB, kept in Postgres for the pilot (decision 0016, proposed). The bytes never reach audit rows or stored replies.
 - Added: `phone` on `GET /riders/me`.
-- Added: `internal/push`, an FCM HTTP v1 pusher signed with a service account. Not wired yet: the push worker runs in customer-api, which is left as it was, so its log pusher still stands in.
+- Added: `internal/push`, an FCM HTTP v1 pusher signed with a service account.
 - Added: timed rider reminders in rider-api (`shifts.RunReminders`): the unanswered stock request 30 minutes before the start, and "Shift ending soon" 15 minutes before the planned end. Each goes once.
 - Added: migration 0041. Not applied to Supabase.
 - Evidence: `go test ./...` passes; the database tests compile but were not run (no local Postgres with PostGIS).

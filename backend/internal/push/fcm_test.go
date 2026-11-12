@@ -128,3 +128,21 @@ func TestBadAccountsAreRefused(t *testing.T) {
 		t.Error("a missing file was accepted")
 	}
 }
+
+type recorder struct{ topics []string }
+
+func (r *recorder) Push(_ context.Context, _, _, topic string, _ map[string]any) error {
+	r.topics = append(r.topics, topic)
+	return nil
+}
+
+func TestOnlyRiderPushesGoToTheRiderPusher(t *testing.T) {
+	rider, others := &recorder{}, &recorder{}
+	p := RiderOnly{Rider: rider, Others: others}
+	for _, topic := range []string{"push.rider", "push.customer", "push.rider"} {
+		_ = p.Push(context.Background(), "android", "t", topic, nil)
+	}
+	if len(rider.topics) != 2 || len(others.topics) != 1 || others.topics[0] != "push.customer" {
+		t.Errorf("rider %v, others %v", rider.topics, others.topics)
+	}
+}

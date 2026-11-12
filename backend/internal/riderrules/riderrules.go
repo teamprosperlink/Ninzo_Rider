@@ -28,3 +28,6 @@ const SignInPause = 30 * time.Minute
 // CancelPayCapPaise is the most a cancelled prepaid order pays the rider for the trip; under it,
 // the order's whole price (the rider app's Navigate 04 and 06).
 const CancelPayCapPaise = 2000
+
+// BatteryFreshFor is how old a scooter's battery reading may be and still be shown to the rider.
+const BatteryFreshFor = 30 * time.Minute

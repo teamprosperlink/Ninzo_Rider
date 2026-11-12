@@ -412,6 +412,33 @@ func riderRoutes() []route {
 					"online_at": stamp(yesterday.Add(-7*time.Hour - 40*time.Minute)), "planned_end_at": stamp(yesterday), "orders": 12, "portions": 15, "avg_delivery_s": 92},
 			}})
 		}},
+		{method: "GET", path: "/telephony/connect", open: true, handle: func(c *call) {
+			q := c.r.URL.Query()
+			if q.Get("key") == "" {
+				c.fail(401, "unauthorized", "Send the webhook key.", false)
+				return
+			}
+			if q.Get("from") == "" {
+				c.fail(400, "invalid_request", "Send from, and to as the virtual number.", false)
+				return
+			}
+			c.json(200, map[string]any{"number": "+919800000002"})
+		}},
+		{method: "POST", path: "/scooters/{code}/telemetry", open: true, noIdempotent: true, handle: func(c *call) {
+			if c.r.Header.Get("X-Telemetry-Key") == "" {
+				c.fail(401, "unauthorized", "Send the telemetry key.", false)
+				return
+			}
+			body, ok := needsBody(c, "battery_pct", "at")
+			if !ok {
+				return
+			}
+			if pct, isNumber := body["battery_pct"].(float64); !isNumber || pct < 0 || pct > 100 {
+				c.fail(400, "invalid_request", "Send battery_pct (0 to 100) and at.", false)
+				return
+			}
+			c.json(202, map[string]any{})
+		}},
 		{method: "GET", path: "/riders/me/settings", handle: func(c *call) {
 			c.json(200, map[string]any{"settings": map[string]any{
 				"timer_length_s": 90, "arrive_m": 100, "almost_there_m": 300, "away_from_spot_m": 150, "low_stock_qty": 5,

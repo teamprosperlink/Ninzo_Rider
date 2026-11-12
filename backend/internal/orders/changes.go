@@ -14,6 +14,7 @@ import (
 
 	"github.com/teamprosperlink/Ninzo_backend/internal/audit"
 	"github.com/teamprosperlink/Ninzo_backend/internal/availability"
+	"github.com/teamprosperlink/Ninzo_backend/internal/earnings"
 	"github.com/teamprosperlink/Ninzo_backend/internal/identity"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/database"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/httpserver"
@@ -77,6 +78,20 @@ func end(ctx context.Context, tx pgx.Tx, orderID, from, to, endedReason, actorTy
 	if _, err := tx.Exec(ctx, `UPDATE orders SET state = $2, ended_reason = $3, ended_at = now(), seq = seq + 1, handover_otp = NULL, updated_at = now()
 		WHERE id = $1`, orderID, to, endedReason); err != nil {
 		return err
+	}
+	// A rider who had accepted a cancelled order is paid for the trip (the rider app's Navigate
+	// 04 and 06). Read before endOffers releases the offer.
+	if to == "CANCELLED" {
+		var rider string
+		err := tx.QueryRow(ctx, "SELECT rider_id::text FROM offers WHERE order_id = $1 AND state = 'accepted' AND released_at IS NULL", orderID).Scan(&rider)
+		switch {
+		case err == nil:
+			if err := earnings.RecordCancellation(ctx, tx, rider, orderID, time.Now()); err != nil {
+				return err
+			}
+		case !errors.Is(err, pgx.ErrNoRows):
+			return err
+		}
 	}
 	if err := endOffers(ctx, tx, orderID, to); err != nil {
 		return err

@@ -24,6 +24,7 @@ Each table belongs to one module, and only that module has SQL for it (`project_
 | `identity` | `riders` | Rider profiles, including applicants. `zone_id` is added in v0.3.0, when `zones` exists | v0.2.0 |
 | `identity` | `rider_credentials` | Not used: riders sign in by OTP only. Kept for the phone-lost options | v0.2.0 |
 | `identity` | `rider_verifications` | Document status | v0.2.0 |
+| `dispatch` | `call_bridges` | A rider's masked call to a customer, for a few minutes | migration 0046 |
 | `identity` | `rider_documents` | The rider's document photos, for checking by hand (decision 0016) | migration 0041 |
 | `identity` | `otp_requests` | Hashed codes, their purpose, and attempts | v0.2.0 |
 | `identity` | `refresh_tokens` | Hashed refresh tokens and their chains | v0.2.0 |
@@ -172,7 +173,7 @@ Until a later table exists, an endpoint simply does not use it: `listNodes` has 
 | `getRiderOrder` | `offers`, `orders`, `order_items`, `gates` | | | |
 | `getRoute` | `offers`, `orders`, `gates` | | Position | Routing engine |
 | `handOver` | `rider_events`, `offers`, `orders`, `order_items`, `gates`, `payments`, `location_pings`, `reservations` | `rider_events`, `offers`, `orders`, `order_events`, `reservations`, `scooter_stock`, `stock_ledger`, `rider_state`, `refunds`, `arrival_reviews`, `scheduled_tasks`, `outbox_events`, `audit_events`, `idempotency_keys` | Position, fan-out | None: a partial refund runs from a task |
-| `startRiderMaskedCall` | `offers`, `orders`, `customers` | `audit_events`, `idempotency_keys` | | Telephony |
+| `startRiderMaskedCall` | `offers`, `orders`, `customers`, `riders`, `people` | `call_bridges`, `idempotency_keys` | | Telephony |
 | `locationPing` | `offers`, `orders`, `location_zones`, `location_pings`, `arrival_reviews` | `location_pings`, `orders`, `order_events`, `rider_state`, `remedies`, `arrival_reviews`, `scheduled_tasks`, `outbox_events` | Position, cells, rate limit, fan-out | |
 | `sendEventBatch` | `rider_events`, `offers`, `orders`, `order_items`, `gates`, `payments`, `location_pings`, `lots`, `scooters`, `scooter_stock`, `reservations`, `restock_requests`, `restock_lots` | `rider_events`, `location_pings`, `offers`, `orders`, `order_events`, `reservations`, `scooter_stock`, `stock_ledger`, `rider_state`, `refunds`, `arrival_reviews`, `problem_reports`, `restock_requests`, `restock_lines`, `scheduled_tasks`, `outbox_events`, `audit_events` | Fan-out | None |
 | `listRestockSuggestions` | `restock_requests`, `restock_lines`, `hubs`, `shifts`, `staging_nodes` | | | |
@@ -199,6 +200,8 @@ Until a later table exists, an endpoint simply does not use it: `listNodes` has 
 | `getRiderHelp` | `help_articles` | | | |
 | `sendRiderFeedback` | `riders` | `rider_feedback`, `idempotency_keys` | | |
 | `checkGate` | `orders`, `offers`, `gates` | | | |
+| `connectCall` | `call_bridges` | | | |
+| `reportScooterTelemetry` | `scooters` | `scooters`, `rider_state` | | |
 | `uploadRiderDocument` | `riders`, `rider_verifications` | `rider_documents`, `audit_events`, `idempotency_keys` | | |
 
 ## 4.1 Partner API

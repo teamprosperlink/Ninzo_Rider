@@ -89,7 +89,9 @@ type Service struct {
 	Pool     *pgxpool.Pool
 	Log      *slog.Logger
 	Payments Payments
-	now      func() time.Time
+	// RiderCalls makes the rider's masked calls; nil means none can be made.
+	RiderCalls *RiderCalls
+	now        func() time.Time
 }
 
 func (s *Service) clock() time.Time {

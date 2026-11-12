@@ -31,22 +31,28 @@ var operationsWithoutIdempotency = map[string]bool{
 	"locationPing":       true,
 	"sendEventBatch":     true,
 	// checkGate only compares a code; it changes nothing.
-	"checkGate":    true,
-	"consoleLogin": true,
-	"enrollTotp":   true,
-	"verifyTotp":   true,
+	"checkGate": true,
+	// A newer reading replaces the one kept, so a repeat changes nothing.
+	"reportScooterTelemetry": true,
+	"consoleLogin":           true,
+	"enrollTotp":             true,
+	"verifyTotp":             true,
 }
 
 // operationsWithoutBearer are the only operations allowed to skip sign-in.
 var operationsWithoutBearer = map[string]bool{
+	// Called by the telephony provider with the webhook key.
+	"connectCall":      true,
 	"requestOtp":       true,
 	"verifyOtp":        true,
 	"signInWithGoogle": true,
 	"refreshToken":     true,
 	"razorpayWebhook":  true,
-	"consoleLogin":     true,
-	"enrollTotp":       true,
-	"verifyTotp":       true,
+	// Called by scooters with the telemetry key, not by a signed-in rider.
+	"reportScooterTelemetry": true,
+	"consoleLogin":           true,
+	"enrollTotp":             true,
+	"verifyTotp":             true,
 }
 
 // hiddenCustomerFields would reveal that a rider is allotted during the wait.

@@ -28,6 +28,7 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/profile"
 	"github.com/teamprosperlink/Ninzo_backend/internal/relocation"
 	"github.com/teamprosperlink/Ninzo_backend/internal/ridernotes"
+	"github.com/teamprosperlink/Ninzo_backend/internal/riderrules"
 )
 
 var idPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -170,16 +171,19 @@ type Filled struct {
 }
 
 // Fill adds node_assigned_at, the scooter, the planned end and the device to a shift read from the
-// database. The battery is null until scooter data exists (docs/engineering/real_and_stand_ins.md).
+// database. The battery is the telemetry's last reading (reportScooterTelemetry), null when none is fresh.
 func Fill(ctx context.Context, q querier, shiftID string, started time.Time) (Filled, error) {
 	var id, plate string
 	var arrived, plannedEnd, online, breakStart, breakEnd *time.Time
 	var device *string
+	var battery *int // The telemetry's last reading, if fresh (riderrules.BatteryFreshFor).
+
 	err := q.QueryRow(ctx, `SELECT c.id::text, c.code,
 			(SELECT max(m.accepted_at) FROM relocations m WHERE m.shift_id = sh.id AND m.accepted_at IS NOT NULL),
-			sh.planned_end_at, sh.device_id::text, sh.online_at, sh.break_started_at, sh.break_ends_at
-		FROM shifts sh JOIN scooters c ON c.id = sh.scooter_id WHERE sh.id = $1`, shiftID).
-		Scan(&id, &plate, &arrived, &plannedEnd, &device, &online, &breakStart, &breakEnd)
+			sh.planned_end_at, sh.device_id::text, sh.online_at, sh.break_started_at, sh.break_ends_at,
+			CASE WHEN c.battery_at > now() - make_interval(secs => $2) THEN c.battery_pct END
+		FROM shifts sh JOIN scooters c ON c.id = sh.scooter_id WHERE sh.id = $1`, shiftID, riderrules.BatteryFreshFor.Seconds()).
+		Scan(&id, &plate, &arrived, &plannedEnd, &device, &online, &breakStart, &breakEnd, &battery)
 	if err != nil {
 		return Filled{}, err
 	}
@@ -187,7 +191,7 @@ func Fill(ctx context.Context, q querier, shiftID string, started time.Time) (Fi
 	if arrived != nil && arrived.After(started) {
 		at = *arrived
 	}
-	f := Filled{NodeAssignedAt: stamp(at), Scooter: map[string]any{"id": id, "plate": plate, "battery_pct": nil}, DeviceID: device,
+	f := Filled{NodeAssignedAt: stamp(at), Scooter: map[string]any{"id": id, "plate": plate, "battery_pct": battery}, DeviceID: device,
 		PlannedEndAt: optional(plannedEnd), OnlineAt: optional(online)}
 	if breakStart != nil && breakEnd != nil {
 		f.Break = map[string]any{"started_at": stamp(*breakStart), "ends_at": stamp(*breakEnd)}

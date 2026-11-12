@@ -17,6 +17,7 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/geo"
 	"github.com/teamprosperlink/Ninzo_backend/internal/identity"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/httpserver"
+	"github.com/teamprosperlink/Ninzo_backend/internal/riderrules"
 )
 
 // Local is the zones' time zone. Every zone is in India for now; a day is a local day.
@@ -24,6 +25,20 @@ var Local = time.FixedZone("IST", 5*3600+1800)
 
 // Day is the local date of t.
 func Day(t time.Time) string { return t.In(Local).Format(time.DateOnly) }
+
+// RecordCancellation pays the rider who had accepted an order that was then cancelled: the lesser
+// of riderrules.CancelPayCapPaise and the order's price (the rider app's Navigate 04 and 06). It is
+// not an order handed over, so it counts toward no incentive. A repeat records nothing more.
+func RecordCancellation(ctx context.Context, tx pgx.Tx, rider, order string, at time.Time) error {
+	var total int64
+	if err := tx.QueryRow(ctx, "SELECT total_paise FROM orders WHERE id = $1", order).Scan(&total); err != nil {
+		return err
+	}
+	pay := min(total, int64(riderrules.CancelPayCapPaise))
+	_, err := tx.Exec(ctx, `INSERT INTO earnings (rider_id, kind, order_id, amount_paise, day, earned_at) VALUES ($1, 'cancellation', $2, $3, $4, $5)
+		ON CONFLICT (order_id) WHERE kind = 'cancellation' DO NOTHING`, rider, order, pay, Day(at), at)
+	return err
+}
 
 // RecordOrder records the pay for a handed-over order, and the day's incentive once the rider's
 // handed-over orders reach the zone's level. A repeat records nothing more.
@@ -146,6 +161,7 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	orders := []map[string]any{}
+	handed := 0 // Orders handed over; a cancellation's pay is listed but is no order done.
 	var total, incentives, seconds, moving int64
 	var kind string
 	var order *string
@@ -154,6 +170,9 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request) {
 		total += amount
 		switch kind {
 		case "order":
+			handed++
+			orders = append(orders, map[string]any{"order_id": *order, "amount": money(amount)})
+		case "cancellation":
 			orders = append(orders, map[string]any{"order_id": *order, "amount": money(amount)})
 		case "incentive":
 			incentives += amount
@@ -166,7 +185,7 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	httpserver.WriteJSON(w, http.StatusOK, map[string]any{"date": date, "orders": len(orders), "order_earnings": orders, "incentives": money(incentives),
+	httpserver.WriteJSON(w, http.StatusOK, map[string]any{"date": date, "orders": handed, "order_earnings": orders, "incentives": money(incentives),
 		"total": money(total), "repositioning": money(moving), "repositioning_seconds": seconds, "server_time": time.Now().UTC().Format(time.RFC3339Nano)})
 }
 

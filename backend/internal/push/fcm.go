@@ -186,3 +186,23 @@ func (f *FCM) Push(ctx context.Context, platform, token, topic string, payload m
 		return fmt.Errorf("push: FCM answered %d", resp.StatusCode)
 	}
 }
+
+// Pusher is what the push worker hands each push to (orders.Pusher has the same method).
+type Pusher interface {
+	Push(ctx context.Context, platform, token, topic string, payload map[string]any) error
+}
+
+// RiderOnly sends rider pushes (topic push.rider) through Rider and every other topic through
+// Others, so turning FCM on for riders leaves customers' pushes as they were.
+type RiderOnly struct {
+	Rider  Pusher
+	Others Pusher
+}
+
+// Push implements Pusher.
+func (p RiderOnly) Push(ctx context.Context, platform, token, topic string, payload map[string]any) error {
+	if topic == "push.rider" {
+		return p.Rider.Push(ctx, platform, token, topic, payload)
+	}
+	return p.Others.Push(ctx, platform, token, topic, payload)
+}

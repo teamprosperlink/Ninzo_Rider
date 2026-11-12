@@ -22,6 +22,7 @@ import (
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/ratelimit"
 	"github.com/teamprosperlink/Ninzo_backend/internal/platform/service"
 	"github.com/teamprosperlink/Ninzo_backend/internal/profile"
+	"github.com/teamprosperlink/Ninzo_backend/internal/push"
 	"github.com/teamprosperlink/Ninzo_backend/internal/relocation"
 	"github.com/teamprosperlink/Ninzo_backend/internal/restock"
 )
@@ -63,7 +64,7 @@ func main() {
 			ordering.MountCustomerStream(r, &orders.Streams{Signer: sessions.Signer})
 			ordering.MountSupport(r, identity.RequireActor(sessions.Signer, identity.TypeCustomer), limits.BySession())
 			// Pushes go through the outbox. The log pusher stands in until FCM is connected.
-			pushes := &outbox.Worker{Pool: d.DB, Handle: ordering.Deliver(orders.LogPusher{Log: d.Log}), Log: d.Log, Topics: orders.PushTopics}
+			pushes := &outbox.Worker{Pool: d.DB, Handle: ordering.Deliver(pusherFor(d)), Log: d.Log, Topics: orders.PushTopics}
 			go pushes.Run(ctx)
 			// Restock's own jobs: the stock check and the expiry of uncollected cassettes. Hub staff do
 			// the hub's part through the partner API; the simulator is for tests only.
@@ -77,4 +78,21 @@ func main() {
 		fmt.Fprintln(os.Stderr, "customer-api:", err)
 		os.Exit(1)
 	}
+}
+
+// pusherFor is the push worker's pusher. Rider pushes go through FCM once FCM_PROJECT_ID and
+// FCM_SERVICE_ACCOUNT_FILE are set; every other push, customers' included, stays with the log
+// pusher as before.
+func pusherFor(d service.Deps) orders.Pusher {
+	logged := orders.LogPusher{Log: d.Log}
+	project, file := os.Getenv("FCM_PROJECT_ID"), os.Getenv("FCM_SERVICE_ACCOUNT_FILE")
+	if project == "" || file == "" {
+		return logged
+	}
+	fcm, err := push.FromFile(project, file)
+	if err != nil {
+		d.Log.Error("push: FCM is set up wrong, so rider pushes are only logged", "error", err.Error())
+		return logged
+	}
+	return push.RiderOnly{Rider: fcm, Others: logged}
 }

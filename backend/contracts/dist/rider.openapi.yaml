@@ -3793,6 +3793,124 @@ paths:
             summary: Start document verification
             tags:
                 - profile
+    /scooters/{code}/telemetry:
+        post:
+            description: Called by the scooter, or the fleet system for it, not by the app. Signed with the shared telemetry key. Only a newer reading replaces the one kept, and a reading older than 30 minutes is not shown to the rider (the shift's scooter.battery_pct).
+            operationId: reportScooterTelemetry
+            parameters:
+                - description: The scooter code shown on the vehicle.
+                  in: path
+                  name: code
+                  required: true
+                  schema:
+                    minLength: 1
+                    type: string
+                - description: The shared telemetry key.
+                  in: header
+                  name: X-Telemetry-Key
+                  required: true
+                  schema:
+                    minLength: 1
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            example:
+                                at: "2026-11-12T06:00:00Z"
+                                battery_pct: 72
+                            properties:
+                                at:
+                                    description: When the scooter read it. At most a minute ahead of the server.
+                                    format: date-time
+                                    type: string
+                                battery_pct:
+                                    maximum: 100
+                                    minimum: 0
+                                    type: integer
+                            required:
+                                - battery_pct
+                                - at
+                            type: object
+                required: true
+            responses:
+                "202":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Done'
+                    description: Kept.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            security: []
+            summary: Report a scooter's battery
+            tags:
+                - shift
+    /telephony/connect:
+        get:
+            description: Called by the telephony provider's dynamic connect flow, not by the app, when a rider calls the virtual number from startRiderMaskedCall. Signed with the webhook key. The answer is the customer of the caller's newest open bridge; with format=text, the number alone.
+            operationId: connectCall
+            parameters:
+                - in: query
+                  name: key
+                  required: true
+                  schema:
+                    minLength: 1
+                    type: string
+                - description: The caller's number, as the provider writes it.
+                  in: query
+                  name: from
+                  required: true
+                  schema:
+                    minLength: 1
+                    type: string
+                - description: The number called; when sent it must be the virtual number.
+                  in: query
+                  name: to
+                  required: false
+                  schema:
+                    type: string
+                - in: query
+                  name: format
+                  required: false
+                  schema:
+                    enum:
+                        - json
+                        - text
+                    type: string
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    number:
+                                        type: string
+                                    server_time:
+                                        $ref: '#/components/schemas/ServerTime'
+                                required:
+                                    - number
+                                    - server_time
+                                type: object
+                    description: The number to connect to.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorized'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalError'
+            security: []
+            summary: Tell the telephony provider whom a masked call connects to
+            tags:
+                - delivery
 security:
     - bearerAuth: []
 servers:
