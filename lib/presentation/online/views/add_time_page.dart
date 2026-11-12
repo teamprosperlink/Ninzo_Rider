@@ -19,7 +19,8 @@ class AddTimePage extends ConsumerWidget {
       art: const RiderArtTile.medium(glyph: RiderPlusGlyph()),
       overline: AppStrings.keepRiding,
       title: AppStrings.wantToKeepRiding,
-      body: AppStrings.addTimeAndOrdersKeepComing,
+      // The longest Add time the rider API offers.
+      body: AppStrings.addTimeAndOrdersKeepComing(_longest(AddTimeOption.values.last.duration)),
       padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s72, AppSizes.s16, AppSizes.s16),
       actionsPadding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s8, AppSizes.s16, AppSizes.s12),
       content: Padding(
@@ -49,3 +50,6 @@ class AddTimePage extends ConsumerWidget {
     );
   }
 }
+
+/// "4 hours" as drawn; a length that isn't whole hours reads as its option does.
+String _longest(Duration d) => d.inMinutes % Duration.minutesPerHour == 0 ? AppStrings.hoursWords(d.inHours) : lengthLabel(d);

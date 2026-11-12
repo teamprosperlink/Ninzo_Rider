@@ -1,4 +1,5 @@
 import '../../core/utils/time_format.dart';
+import 'rider_settings.dart';
 import 'shift.dart';
 import '../../core/constants/app_strings.dart';
 
@@ -86,7 +87,10 @@ class ShiftPushContent {
   static ShiftPushContent of(ShiftPush push, Shift shift, {PushDetail detail = const PushDetail()}) => switch (push) {
     ShiftPush.prepareStock => ShiftPushContent(
       title: AppStrings.shiftStartsAt(clockTime(shift.start)),
-      body: AppStrings.tellTheHubYouReComing,
+      // Reply before the reminder: the gap between the two, from the rider API.
+      body: AppStrings.tellTheHubYouReComing(
+        (RiderSettings.current.stockAskBefore - RiderSettings.current.stockReminderBefore).inMinutes,
+      ),
       actions: _reply,
     ),
     ShiftPush.reminder => const ShiftPushContent(
@@ -102,8 +106,8 @@ class ShiftPushContent {
       title: AppStrings.yourSpotIs(shift.spot.name),
       body: AppStrings.headThereWhenYouReReady,
     ),
-    ShiftPush.shiftEndingSoon => const ShiftPushContent(
-      title: AppStrings.yourShiftEndsIn15Minutes,
+    ShiftPush.shiftEndingSoon => ShiftPushContent(
+      title: AppStrings.yourShiftEndsIn(RiderSettings.current.endingSoonBefore.inMinutes),
       body: AppStrings.addTimeToKeepGettingOrders2,
     ),
     ShiftPush.ordersWaiting => ShiftPushContent(

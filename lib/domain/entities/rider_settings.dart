@@ -31,6 +31,7 @@ class RiderSettings {
     this.notAtGateAfter = const Duration(seconds: 15),
     this.handoverCodeLength = 4,
     this.cancelPayCap = 20,
+    this.verificationWithin = const Duration(hours: 24),
   });
 
   /// When, before the planned start, the stock request is asked, and when an
@@ -52,6 +53,9 @@ class RiderSettings {
 
   /// Rupees: the most a cancelled prepaid order pays for the trip (Navigate 04, 06).
   final int cancelPayCap;
+
+  /// How soon operations usually check the documents (Register).
+  final Duration verificationWithin;
 
   /// The order's visible timer.
   final Duration timerLength;

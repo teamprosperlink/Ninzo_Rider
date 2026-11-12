@@ -2749,6 +2749,7 @@ components:
       - not_at_gate_after_s
       - handover_code_length
       - cancel_pay_cap
+      - verification_within_s
       - timer_length_s
       - arrive_m
       - almost_there_m
@@ -2849,6 +2850,9 @@ components:
         cancel_pay_cap:
           description: The most a cancelled prepaid order pays for the trip; under it, the order's price.
           $ref: ../shared/common.yaml#/components/schemas/Money
+        verification_within_s:
+          description: How soon operations usually check a rider's documents.
+          type: integer
     RiderSettingsResponse:
       type: object
       required:

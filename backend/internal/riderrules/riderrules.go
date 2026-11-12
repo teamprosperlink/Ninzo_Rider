@@ -31,3 +31,6 @@ const CancelPayCapPaise = 2000
 
 // BatteryFreshFor is how old a scooter's battery reading may be and still be shown to the rider.
 const BatteryFreshFor = 30 * time.Minute
+
+// VerificationWithin is how soon operations usually check a rider's documents.
+const VerificationWithin = 24 * time.Hour

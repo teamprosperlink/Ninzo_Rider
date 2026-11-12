@@ -7,6 +7,7 @@ import '../../../domain/entities/rider_document.dart';
 import '../viewmodels/register_view_model.dart';
 import '../widgets/register_parts.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../domain/entities/rider_settings.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_numbers.dart';
 
@@ -35,9 +36,9 @@ class DocumentsPage extends ConsumerWidget {
       ],
       children: [
         const RiderStepProgress(step: AppLimits.registerDocumentsStep, total: AppLimits.registerSteps, label: AppStrings.documents),
-        const RegisterHeading(
+        RegisterHeading(
           AppStrings.addYourDocuments,
-          AppStrings.clearPhotosOnlyNoGlareUsually,
+          AppStrings.clearPhotosOnlyNoGlareUsually(RiderSettings.current.verificationWithin.inHours),
         ),
         RiderInfoCard(
           children: [
