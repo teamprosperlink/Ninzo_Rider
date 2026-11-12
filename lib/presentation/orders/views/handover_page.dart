@@ -220,9 +220,9 @@ class CustomerCodePage extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const RiderTitleBlock(
+                            RiderTitleBlock(
                               title: AppStrings.askForTheCustomerSCode,
-                              subtitle: AppStrings.enterThe4DigitCodeThe,
+                              subtitle: AppStrings.enterTheDigitCodeThe(HandoverRules.codeLength),
                             ),
                             const SizedBox(height: AppSizes.s16),
                             RiderCodeBoxes.large(
@@ -233,8 +233,8 @@ class CustomerCodePage extends ConsumerWidget {
                             ),
                             if (state.wrongCode) ...[
                               const SizedBox(height: AppSizes.s16),
-                              const RiderInlineMessage(
-                                AppStrings.almostThereCheckThe4Digit,
+                              RiderInlineMessage(
+                                AppStrings.almostThereCheckTheDigit(HandoverRules.codeLength),
                               ),
                               const SizedBox(height: AppSizes.s16),
                               _CodeLink(AppStrings.codeNotWorkingCheckOrderDetails, onTap: vm.checkDetails),

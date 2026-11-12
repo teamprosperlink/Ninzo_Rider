@@ -37,7 +37,8 @@ android {
         val env = Properties()
         rootProject.file("../.env").takeIf { it.exists() }?.inputStream()?.use { env.load(it) }
         manifestPlaceholders["MAPS_API_KEY"] = env.getProperty("MAPS_API_KEY") ?: "NO_KEY_SET"
-        manifestPlaceholders["STAGING_API_URL"] = env.getProperty("STAGING_API_URL") ?: ""
+        // `-PriderApiUrl=...` points a build at another rider API (a local mock server, say) without touching .env.
+        manifestPlaceholders["STAGING_API_URL"] = (project.findProperty("riderApiUrl") as String?) ?: env.getProperty("STAGING_API_URL") ?: ""
     }
 
     buildTypes {

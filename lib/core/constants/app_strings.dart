@@ -384,8 +384,8 @@ abstract final class AppStrings {
   static String ordered(Object? p0) => 'Ordered × $p0';
   static const atTheGate = 'At the gate';
   static const askForTheCustomerSCode = 'Ask for the customer’s code';
-  static const enterThe4DigitCodeThe = 'Enter the 4-digit code the customer shows you to hand over the order.';
-  static const almostThereCheckThe4Digit = 'Almost there! Check the 4-digit code with the customer and enter it again.';
+  static String enterTheDigitCodeThe(Object? p0) => 'Enter the $p0-digit code the customer shows you to hand over the order.';
+  static String almostThereCheckTheDigit(Object? p0) => 'Almost there! Check the $p0-digit code with the customer and enter it again.';
   static const codeNotWorkingCheckOrderDetails = 'Code not working? Check order details';
   static const confirmDelivery = 'Confirm delivery';
   static const confirming = 'Confirming…';
