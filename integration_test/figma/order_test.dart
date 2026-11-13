@@ -87,7 +87,14 @@ void main() {
     DeliveryStatus status = DeliveryStatus.assigned,
     OrderPayment payment = OrderPayment.upi,
     int amount = 60,
-  }) => testDeliveryOrder(assignedAt: assignedAt, status: status, payment: payment, amount: amount, gatePoint: gate);
+    int riderFee = 0,
+  }) => testDeliveryOrder(
+    assignedAt: assignedAt,
+    status: status,
+    payment: payment,
+    amount: amount,
+    gatePoint: gate,
+  ).copyWith(riderFee: riderFee);
 
   testWidgets('Order 01, 04, 05: assigned, skipping', (tester) async {
     frameSize(tester);
@@ -184,7 +191,8 @@ void main() {
 
   testWidgets('Navigate 04–06: cancellations', (tester) async {
     frameSize(tester);
-    final fakes = rider(order(status: DeliveryStatus.cancelled));
+    // Trip pay is the order's pay in the earnings: Navigate 04's ₹20, 06's ₹16.
+    final fakes = rider(order(status: DeliveryStatus.cancelled, riderFee: 20));
     fakes.riderLocation.position.value = legOnTheWay;
     await pumpApp(tester, fakes);
     await wait(tester, 100);
@@ -197,7 +205,7 @@ void main() {
     expect(find.text('Cash on delivery'), findsOneWidget);
     await shot(tester, 'navigate_05_order_cancelled_cash');
 
-    fakes.delivery.order.value = order(status: DeliveryStatus.cancelled, amount: 16);
+    fakes.delivery.order.value = order(status: DeliveryStatus.cancelled, amount: 16, riderFee: 16);
     await wait(tester, 100);
     expect(find.text('₹16'), findsNWidgets(2));
     await shot(tester, 'navigate_06_order_cancelled_upi_under_20');

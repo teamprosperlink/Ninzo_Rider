@@ -6,6 +6,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:ninzo_rider/presentation/app/views/app.dart';
+import 'package:ninzo_rider/core/constants/demo_data.dart';
 import 'package:ninzo_rider/core/theme/app_theme.dart';
 import 'package:ninzo_rider/core/widgets/rider/rider_status.dart';
 import 'package:ninzo_rider/domain/entities/online_status.dart';
@@ -116,6 +117,11 @@ void main() {
       record(2, 11, 11, 340, 445),
       record(1, 11, 8, 245, 330),
       record(31, 10, 12, 370, 470),
+    ];
+    // The rider API's help centre (`GET /riders/me/help`): Figma's six questions.
+    fakes.profile.help.value = [
+      for (final (i, (question, answer)) in DemoData.helpArticles.indexed)
+        HelpArticle(id: 'faq$i', question: question, answer: answer),
     ];
     return fakes;
   }
